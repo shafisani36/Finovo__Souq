@@ -1,0 +1,27 @@
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime files
+*.pid
+*.seed
+
+# Coverage
+coverage/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/r

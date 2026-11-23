@@ -1,0 +1,194 @@
+import User from '../users/user.model.js'
+import {
+  generateAccessToken,
+  generateRefreshToken,
+   verifyRefreshToken,
+} from '../../services/jwt.service.js'
+
+import {
+  createSession,
+  revokeSession,
+  revokeAllUserSessions,
+    rotateSessionToken,
+} from '../../services/session.service.js'
+
+import { env } from '../../config/env.js'
+
+const createAuthTokens = async (user, req) => {
+  const sessionId = new mongoose.Types.ObjectId().toString()
+
+  const refreshToken = generateRefreshToken(
+    user._id.toString(),
+    sessionId
+  )
+
+  const expiresAt = new Date(
+    Date.now() + 7 * 24 * 60 * 60 * 1000
+  )
+
+  await createSession({
+    sessionId,
+    userId: user._id,
+    refreshToken,
+    userAgent: req.get('user-agent'),
+    ipAddress: req.ip,
+    expiresAt,
+  })
+
+  const accessToken = generateAccessToken(
+  user._id.toString(),
+  sessionId
+)
+
+  return {
+    accessToken,
+    refreshToken,
+    sessionId,
+  }
+}
+
+export const registerUser = async (data, req) => {
+  const { name, email, password, phone } = data
+
+  const existingUser = await User.findOne({
+    email: email.toLowerCase().trim(),
+  })
+
+  if (existingUser) {
+    const error = new Error('Email is already registered')
+    error.statusCode = 409
+    throw error
+  }
+
+  const user = await User.create({
+    name,
+    email,
+    password,
+    phone,
+  })
+
+  const tokens = await createAuthTokens(user, req)
+
+  return {
+    user: user.toJSON(),
+    ...tokens,
+  }
+}
+
+export const loginUser = async (data, req) => {
+  const email = data.email.toLowerCase().trim()
+
+  const user = await User.findOne({ email }).select('+password')
+
+  if (!user) {
+    const error = new Error('Invalid email or password')
+    error.statusCode = 401
+    throw error
+  }
+
+  if (user.status !== 'active') {
+    const error = new Error('Your account is suspended')
+    error.statusCode = 403
+    throw error
+  }
+
+  const isPasswordValid = await user.comparePassword(data.password)
+
+  if (!isPasswordValid) {
+    const error = new Error('Invalid email or password')
+    error.statusCode = 401
+    throw error
+  }
+
+  const tokens = await createAuthTokens(user, req)
+
+  return {
+    user: user.toJSON(),
+    ...tokens,
+  }
+}
+
+
+export const logoutUser = async (sessionId, userId) => {
+  const session = await revokeSession(sessionId, userId)
+
+  if (!session) {
+    const error = new Error('Session not found or already revoked')
+    error.statusCode = 404
+    throw error
+  }
+
+  return {
+    message: 'Logged out successfully',
+  }
+}
+
+
+export const logoutAllDevices = async (userId) => {
+  await revokeAllUserSessions(userId)
+
+  return {
+    message: 'All sessions revoked successfully',
+  }
+}
+
+
+
+export const refreshUserTokens = async (refreshToken) => {
+  if (!refreshToken) {
+    const error = new Error('Refresh token is required')
+    error.statusCode = 401
+    throw error
+  }
+
+  let payload
+
+  try {
+    payload = verifyRefreshToken(refreshToken)
+  } catch {
+    const error = new Error('Invalid or expired refresh token')
+    error.statusCode = 401
+    throw error
+  }
+
+  const user = await User.findById(payload.sub)
+
+  if (!user || user.status !== 'active') {
+    const error = new Error('User not found or inactive')
+    error.statusCode = 401
+    throw error
+  }
+
+  const newRefreshToken = generateRefreshToken(
+    user._id.toString(),
+    payload.sid
+  )
+
+  const expiresAt = new Date(
+    Date.now() + 7 * 24 * 60 * 60 * 1000
+  )
+
+  const rotated = await rotateSessionToken(
+    payload.sid,
+    refreshToken,
+    newRefreshToken,
+    expiresAt
+  )
+
+  if (!rotated) {
+    const error = new Error('Refresh token is invalid or already used')
+    error.statusCode = 401
+    throw error
+  }
+
+  const accessToken = generateAccessToken(
+  user._id.toString(),
+  payload.sid
+)
+
+  return {
+    user: user.toJSON(),
+    accessToken,
+    refreshToken: newRefreshToken,
+  }
+}
