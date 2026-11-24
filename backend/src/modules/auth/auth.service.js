@@ -1,4 +1,5 @@
 import User from '../users/user.model.js'
+import mongoose from 'mongoose'
 import {
   generateAccessToken,
   generateRefreshToken,

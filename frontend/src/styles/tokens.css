@@ -1,0 +1,120 @@
+/*
+ * Finovo Souq design tokens
+ * Light, quiet interface in the style of modern admin dashboards:
+ * white surfaces on a soft grey page, hairline borders, small radii and one purple accent.
+ */
+:root {
+  /* Brand */
+  --color-brand-dark: #1d1638;
+  --color-brand-dark-hover: #2c2352;
+  /* Deep night purple for the landing hero, dark cards and footer */
+  --color-night: #110c28;
+  --color-accent: #6c47ff;
+  --color-accent-text: #ffffff;
+
+  /* Surfaces */
+  --color-bg: #f6f6f9;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-subtle: #fafafc;
+  --color-border: #eaeaf0;
+  --color-border-subtle: #f1f1f5;
+  --color-field-bg: #ffffff;
+  --color-field-border: #e0e0e8;
+  --color-field-border-hover: #c4c4d2;
+  --color-control-hover: #f4f4f8;
+
+  /* Sidebar (light) */
+  --color-sidebar-bg: #ffffff;
+  --color-sidebar-text: #5b5b6b;
+  --color-sidebar-muted: #a1a1b0;
+  --color-sidebar-active: #f3f0ff;
+
+  /* Text */
+  --color-text: #16161d;
+  --color-text-secondary: #4d4d5c;
+  --color-text-muted: #7c7c8c;
+  --color-text-inverse: #ffffff;
+
+  /* Primary actions */
+  --color-primary: #6c47ff;
+  --color-primary-hover: #5b37f0;
+  --color-primary-pressed: #4a28d6;
+  --color-primary-soft: #efebff;
+  --color-primary-tint: #f7f5ff;
+  --color-primary-border: rgba(108, 71, 255, 0.4);
+
+  /* Status (reserved - never used as chart series colours) */
+  --color-success: #067647;
+  --color-success-soft: #ecfdf3;
+  --color-success-border: #abefc6;
+  --color-warning: #b54708;
+  --color-warning-soft: #fffaeb;
+  --color-warning-border: #fedf89;
+  --color-danger: #c01048;
+  --color-danger-soft: #fff1f3;
+  --color-danger-border: #fecdd6;
+  --color-info: #175cd3;
+  --color-info-soft: #eff8ff;
+  --color-info-border: #b2ddff;
+  --color-neutral-soft: #f4f4f7;
+  --color-neutral-border: #e0e0e8;
+
+  /* Charts - categorical order checked for colour-blind separation: purple, teal, amber, blue, pink */
+  --series-1: #6c47ff;
+  --series-2: #0e9384;
+  --series-3: #e8890c;
+  --series-4: #2e90fa;
+  --series-5: #dd2590;
+  --series-other: #b4b4c3;
+  --chart-grid: #f0f0f4;
+  --chart-bar: #e6e0ff;
+  --chart-bar-active: #6c47ff;
+
+  /* Outlines drawn with box-shadow so they never change layout */
+  --ring: 0 0 0 1px var(--color-border);
+  --ring-inset: inset 0 0 0 1px var(--color-border);
+  --shadow-card: 0 1px 2px rgba(22, 22, 29, 0.04);
+  --shadow-popover: 0 12px 32px rgba(22, 22, 29, 0.12), 0 2px 6px rgba(22, 22, 29, 0.06);
+
+  /* Shape */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-pill: 999px;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Type */
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.375rem;
+
+  /* Layout */
+  --sidebar-width: 248px;
+  --topbar-height: 64px;
+  --container-width: 1200px;
+
+  --transition-fast: 120ms ease;
+  --transition-base: 180ms ease;
+  --focus-ring: 0 0 0 3px rgba(108, 71, 255, 0.18);
+}
