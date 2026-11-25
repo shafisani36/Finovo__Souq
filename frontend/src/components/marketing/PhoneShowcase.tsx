@@ -14,13 +14,21 @@ function StatusBar() {
   );
 }
 
+type ShowcaseAd = Pick<Listing, 'id' | 'title' | 'price' | 'listingType' | 'city' | 'photos' | 'categorySlug'>;
+
+/** Fills the phones until there are enough live ads, so the hero never looks empty on a new site */
+const SAMPLE_ADS: ShowcaseAd[] = [
+  { id: 'sample-car', title: 'Toyota Camry 2022, low mileage', price: 89000, listingType: 'sale', city: 'Riyadh', photos: [], categorySlug: 'cars' },
+  { id: 'sample-phone', title: 'iPhone 15 Pro, 256 GB', price: 3900, listingType: 'sale', city: 'Jeddah', photos: [], categorySlug: 'electronics' },
+  { id: 'sample-flat', title: '2 bedroom apartment', price: 48000, listingType: 'rent', city: 'Dammam', photos: [], categorySlug: 'property' },
+];
+
 /**
  * Three phone screens drawn from live data: an ad, the home screen and a chat.
  * Decorative only, so it is hidden from screen readers.
  */
 export function PhoneShowcase({ listings, categories }: { listings: Listing[]; categories: Category[] }) {
-  const [featured, second, third] = listings;
-  if (!featured) return <div className="phones phones--empty" aria-hidden="true" />;
+  const [featured, second, third] = [...listings, ...SAMPLE_ADS];
 
   return (
     <div className="phones" aria-hidden="true">
@@ -68,11 +76,11 @@ export function PhoneShowcase({ listings, categories }: { listings: Listing[]; c
           </div>
           <p className="phone__label">Fresh ads</p>
           <div className="phone__grid">
-            {[second, third].filter(Boolean).map((l) => (
-              <div key={l!.id} className="phone__card">
-                <ListingImage listing={l!} iconSize={20} />
-                <strong>{formatPrice(l!.price, l!.listingType)}</strong>
-                <span>{l!.title}</span>
+            {[second, third].map((l) => (
+              <div key={l.id} className="phone__card">
+                <ListingImage listing={l} iconSize={20} />
+                <strong>{formatPrice(l.price, l.listingType)}</strong>
+                <span>{l.title}</span>
               </div>
             ))}
           </div>

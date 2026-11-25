@@ -1,8 +1,6 @@
 import { env } from '../config/env';
-import type { User } from '../types';
-import { endpoints, LIVE_ENDPOINTS } from './endpoints';
+import { endpoints } from './endpoints';
 import { ApiError, NETWORK_ERROR_MESSAGE, type FieldErrors } from './errors';
-import { normalizeUser, type BackendUser } from './normalize';
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 type QueryValue = string | number | boolean | null | undefined;
@@ -20,8 +18,7 @@ export interface RequestOptions {
 /**
  * Backend envelope (backend/src/utils/ApiResponse.js and the error handler):
  *   success: { statusCode, success: true, message, data }
- *   failure: { success: false, message, errors?: string[] }
- * The mock API throws ApiError directly, so it never goes through this shape.
+ *   failure: { success: false, message, errors?: (string | { field, message })[] }
  */
 interface ApiEnvelope<T> {
   success?: boolean;
@@ -32,7 +29,6 @@ interface ApiEnvelope<T> {
 
 const TOKEN_KEY = 'souq_access_token';
 const SESSION_ID_KEY = 'souq_session_id';
-const USER_KEY = 'souq_user';
 const DEFAULT_TIMEOUT_MS = 15000;
 export const SESSION_EXPIRED_EVENT = 'souq:session-expired';
 
@@ -53,16 +49,6 @@ function storageSet(key: string, value: string | null): void {
   }
 }
 
-function readStoredUser(): User | null {
-  const raw = storageGet(USER_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as User;
-  } catch {
-    return null;
-  }
-}
-
 /** Reads the session id ("sid") from the access token payload; the signature is checked by the server */
 function sessionIdFromToken(token: string | null): string | null {
   const payload = token?.split('.')[1];
@@ -75,7 +61,10 @@ function sessionIdFromToken(token: string | null): string | null {
   }
 }
 
-/** Backend validation errors arrive as a list of sentences; place each one under the field it is about */
+/**
+ * New modules send { field, message }; the auth module sends plain sentences,
+ * which are placed under the field they mention.
+ */
 const FIELD_KEYWORDS: [RegExp, string][] = [
   [/password/i, 'password'],
   [/email/i, 'email'],
@@ -84,13 +73,20 @@ const FIELD_KEYWORDS: [RegExp, string][] = [
 ];
 
 function toFieldErrors(errors: unknown): { fields: FieldErrors; details: string[] } {
-  const details = Array.isArray(errors) ? errors.filter((e): e is string => typeof e === 'string') : [];
   const fields: FieldErrors = {};
-  details.forEach((sentence) => {
-    const field = FIELD_KEYWORDS.find(([pattern]) => pattern.test(sentence))?.[1];
+  const details: string[] = [];
+  const add = (field: string | undefined, message: string) => {
+    details.push(message);
     if (!field) return;
-    const text = sentence.endsWith('.') ? sentence : `${sentence}.`;
+    const text = message.endsWith('.') ? message : `${message}.`;
     fields[field] = fields[field] ? `${fields[field]} ${text}` : text;
+  };
+  (Array.isArray(errors) ? errors : []).forEach((item: unknown) => {
+    if (typeof item === 'string') add(FIELD_KEYWORDS.find(([pattern]) => pattern.test(item))?.[1], item);
+    else if (item && typeof item === 'object' && 'message' in item) {
+      const { field, message } = item as { field?: unknown; message: unknown };
+      add(typeof field === 'string' ? field : undefined, String(message));
+    }
   });
   return { fields, details };
 }
@@ -98,22 +94,14 @@ function toFieldErrors(errors: unknown): { fields: FieldErrors; details: string[
 class ApiClient {
   private accessToken: string | null = storageGet(TOKEN_KEY);
   private sessionId: string | null = storageGet(SESSION_ID_KEY);
-  private sessionUser: User | null = readStoredUser();
   private refreshPromise: Promise<string | null> | null = null;
 
-  /** Saves everything needed to stay signed in after a reload */
-  setSession(session: { accessToken: string; sessionId?: string | null; user: User } | null): void {
+  /** Saves what is needed to stay signed in after a reload */
+  setSession(session: { accessToken: string; sessionId?: string | null } | null): void {
     this.accessToken = session?.accessToken ?? null;
     this.sessionId = session ? (session.sessionId ?? sessionIdFromToken(session.accessToken)) : null;
-    this.sessionUser = session?.user ?? null;
     storageSet(TOKEN_KEY, this.accessToken);
     storageSet(SESSION_ID_KEY, this.sessionId);
-    storageSet(USER_KEY, this.sessionUser ? JSON.stringify(this.sessionUser) : null);
-  }
-
-  setSessionUser(user: User): void {
-    this.sessionUser = user;
-    storageSet(USER_KEY, JSON.stringify(user));
   }
 
   getAccessToken(): string | null {
@@ -122,10 +110,6 @@ class ApiClient {
 
   getSessionId(): string | null {
     return this.sessionId ?? sessionIdFromToken(this.accessToken);
-  }
-
-  getSessionUser(): User | null {
-    return this.sessionUser;
   }
 
   get<T>(path: string, options: Omit<RequestOptions, 'method' | 'body'> = {}): Promise<T> {
@@ -144,24 +128,7 @@ class ApiClient {
     return this.request<T>(path, { ...options, method: 'DELETE' });
   }
 
-  /** Mock everything, or only the endpoints the backend does not serve yet */
-  private usesMock(path: string): boolean {
-    if (env.useMockApi) return true;
-    return env.mockPendingEndpoints && !LIVE_ENDPOINTS.includes(path.split('?')[0]);
-  }
-
   async request<T>(path: string, options: RequestOptions = {}, isRetry = false): Promise<T> {
-    if (this.usesMock(path)) {
-      const { handleMockRequest } = await import('./mock/mockServer');
-      return handleMockRequest<T>(path, {
-        method: options.method ?? 'GET',
-        body: options.body,
-        params: options.params,
-        token: options.skipAuth ? null : this.accessToken,
-        sessionUser: options.skipAuth ? null : this.sessionUser,
-      });
-    }
-
     const { method = 'GET', body, params, signal, timeoutMs = DEFAULT_TIMEOUT_MS, skipAuth = false } = options;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
@@ -238,7 +205,6 @@ class ApiClient {
 
   /** One refresh at a time; parallel 401s wait for the same attempt */
   refreshAccessToken(): Promise<string | null> {
-    if (env.useMockApi) return Promise.resolve(null);
     if (!this.refreshPromise) {
       this.refreshPromise = fetch(this.buildUrl(endpoints.auth.refresh), {
         method: 'POST',
@@ -247,12 +213,9 @@ class ApiClient {
       })
         .then(async (res) => {
           if (!res.ok) return null;
-          const json = (await res.json().catch(() => null)) as ApiEnvelope<{ accessToken?: string; user?: BackendUser }> | null;
+          const json = (await res.json().catch(() => null)) as ApiEnvelope<{ accessToken?: string }> | null;
           const token = json?.data?.accessToken ?? null;
-          if (!token) return null;
-          const user = json?.data?.user ? normalizeUser(json.data.user) : this.sessionUser;
-          if (!user) return null;
-          this.setSession({ accessToken: token, sessionId: sessionIdFromToken(token) ?? this.sessionId, user });
+          if (token) this.setSession({ accessToken: token, sessionId: sessionIdFromToken(token) ?? this.sessionId });
           return token;
         })
         .catch(() => null)

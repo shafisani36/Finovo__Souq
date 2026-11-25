@@ -74,11 +74,14 @@ export function NotificationsPage() {
     const ids = all.filter((n) => !n.read).map((n) => n.id);
     if (!ids.length) return;
     setMarkingAll(true);
-    const results = await Promise.allSettled(ids.map((id) => notificationsService.markRead(id)));
-    const done = ids.filter((_, i) => results[i].status === 'fulfilled');
-    markRead(done);
-    setMarkingAll(false);
-    if (done.length < ids.length) toast.show({ title: 'Some notifications could not be updated', tone: 'error' });
+    try {
+      await notificationsService.markAllRead();
+      markRead(ids);
+    } catch {
+      toast.show({ title: 'Notifications could not be updated', tone: 'error' });
+    } finally {
+      setMarkingAll(false);
+    }
   };
 
   return (

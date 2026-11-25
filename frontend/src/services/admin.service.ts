@@ -20,8 +20,13 @@ export const adminService = {
     return apiClient.post<Listing>(endpoints.admin.hide(listingId), { reason });
   },
 
-  users(params: { q?: string; role?: string; status?: string; page?: number }): Promise<Paginated<User>> {
+  users(params: { q?: string; role?: string; accountType?: string; status?: string; page?: number }): Promise<Paginated<User>> {
     return apiClient.get<Paginated<User>>(endpoints.admin.users, { params });
+  },
+
+  /** emailSent is false when the approval email could not be sent */
+  approveUser(userId: string): Promise<{ user: User; emailSent: boolean }> {
+    return apiClient.post<{ user: User; emailSent: boolean }>(endpoints.admin.approveUser(userId));
   },
 
   setUserStatus(userId: string, status: UserStatus, reason: string): Promise<User> {

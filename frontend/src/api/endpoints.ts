@@ -1,20 +1,6 @@
 /**
- * REST endpoints from the Finovo Souq Technical Plan (section 8), relative to VITE_API_URL (/api/v1).
- * Endpoints marked "proposed" are additions this frontend needs; confirm them with the backend team.
+ * REST endpoints of the backend (backend/src/app.js), relative to VITE_API_URL (/api/v1).
  */
-
-/**
- * Endpoints the Express backend already serves (shafisani36/Finovo__Souq, backend/src/modules/auth).
- * Everything else is answered by the mock API while VITE_MOCK_PENDING_ENDPOINTS is "true".
- */
-export const LIVE_ENDPOINTS: readonly string[] = [
-  '/auth/register',
-  '/auth/login',
-  '/auth/refresh',
-  '/auth/logout',
-  '/auth/logout-all',
-  '/auth/me',
-];
 
 export const endpoints = {
   auth: {
@@ -23,11 +9,13 @@ export const endpoints = {
     refresh: '/auth/refresh',
     logout: '/auth/logout',
     logoutAll: '/auth/logout-all',
-    me: '/auth/me',
-    forgotPassword: '/auth/password/forgot', // not in the backend yet
+    forgotPassword: '/auth/password/forgot',
+    verifyResetCode: '/auth/password/verify',
+    resetPassword: '/auth/password/reset',
   },
   users: {
     me: '/users/me',
+    avatar: '/users/me/avatar',
     deletionRequest: '/users/me/deletion-request',
     savedListings: '/users/me/saved-listings',
     savedListing: (listingId: string) => `/users/me/saved-listings/${listingId}`,
@@ -46,26 +34,29 @@ export const endpoints = {
     availability: (id: string) => `/listings/${id}/availability`,
     photos: (id: string) => `/listings/${id}/photos`,
     photo: (id: string, photoId: string) => `/listings/${id}/photos/${photoId}`,
+    photoOrder: (id: string) => `/listings/${id}/photos/order`,
     reports: (id: string) => `/listings/${id}/reports`,
     search: '/search/listings',
-  },
-  sellers: {
-    byId: (id: string) => `/sellers/${id}`,
   },
   conversations: {
     list: '/conversations',
     messages: (id: string) => `/conversations/${id}/messages`,
+    message: (id: string, messageId: string) => `/conversations/${id}/messages/${messageId}`,
+    attachments: (id: string) => `/conversations/${id}/attachments`,
+    read: (id: string) => `/conversations/${id}/read`,
+    block: (id: string) => `/conversations/${id}/block`,
   },
   notifications: {
     list: '/notifications',
     markRead: (id: string) => `/notifications/${id}/read`,
+    readAll: '/notifications/read-all',
   },
   dashboards: {
-    admin: '/admin/dashboard', // proposed
-    user: '/dashboard/user', // proposed
+    admin: '/admin/dashboard',
+    user: '/dashboard/user',
   },
   support: {
-    messages: '/support/messages', // proposed
+    messages: '/support/messages',
   },
   admin: {
     moderationQueue: '/admin/moderation/listings',
@@ -74,8 +65,8 @@ export const endpoints = {
     hide: (id: string) => `/admin/listings/${id}/hide`,
     users: '/admin/users',
     userStatus: (id: string) => `/admin/users/${id}/status`,
+    approveUser: (id: string) => `/admin/users/${id}/approve`,
     reports: '/admin/reports',
-    reportStatus: (id: string) => `/admin/reports/${id}/status`, // proposed
-    categories: '/admin/categories',
+    reportStatus: (id: string) => `/admin/reports/${id}/status`,
   },
 } as const;

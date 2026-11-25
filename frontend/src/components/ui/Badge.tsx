@@ -41,6 +41,7 @@ export function ListingStatusBadge({ status, availability }: { status: ListingSt
 }
 
 const USER_STATUS: Record<UserStatus, { tone: BadgeTone; label: string }> = {
+  pending: { tone: 'warning', label: 'Waiting for approval' },
   active: { tone: 'success', label: 'Active' },
   suspended: { tone: 'danger', label: 'Suspended' },
 };

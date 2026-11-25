@@ -25,6 +25,8 @@ export interface NavItem {
 export interface NavGroup {
   title?: string;
   items: NavItem[];
+  /** Shown only to approved seller accounts */
+  sellerOnly?: boolean;
 }
 
 export const NAVIGATION: Record<UserRole, NavGroup[]> = {
@@ -50,6 +52,7 @@ export const NAVIGATION: Record<UserRole, NavGroup[]> = {
     { title: 'Overview', items: [{ label: 'Dashboard', to: '/account/dashboard', icon: LayoutDashboard }] },
     {
       title: 'Selling',
+      sellerOnly: true,
       items: [
         { label: 'My ads', to: '/account/listings', icon: ListChecks },
         { label: 'Post an ad', to: '/account/listings/new', icon: PlusCircle },

@@ -1,7 +1,9 @@
 /* ---------- Users and roles ---------- */
 /** Roles match the backend user model: one "user" account can both buy and sell */
 export type UserRole = 'admin' | 'user';
-export type UserStatus = 'active' | 'suspended';
+export type UserStatus = 'pending' | 'active' | 'suspended';
+/** Sellers can post ads once an admin approves the account; buyers browse, save and chat */
+export type AccountType = 'buyer' | 'seller';
 
 export interface User {
   id: string;
@@ -9,10 +11,11 @@ export interface User {
   email: string;
   phone: string | null;
   role: UserRole;
+  accountType: AccountType;
   status: UserStatus;
   isEmailVerified: boolean;
-  /** Not stored by the auth service yet; kept for the profile and listing screens */
   city: string | null;
+  avatarUrl: string | null;
   createdAt: string;
 }
 
@@ -28,6 +31,7 @@ export interface RegisterPayload {
   email: string;
   password: string;
   phone?: string;
+  accountType: AccountType;
 }
 
 /* ---------- Categories ---------- */
@@ -75,6 +79,7 @@ export interface ListingPhoto {
 export interface SellerSummary {
   id: string;
   name: string;
+  avatarUrl: string | null;
   city: string | null;
   memberSince: string;
   phoneVerified: boolean;
@@ -141,21 +146,51 @@ export interface Paginated<T> {
 /* ---------- Messaging ---------- */
 export interface Conversation {
   id: string;
+  /** The viewer's side of the deal */
+  role: 'buyer' | 'seller';
   listingId: string;
   listingTitle: string;
   listingPrice: number;
-  counterpart: { id: string; name: string };
+  listingPhotoUrl: string | null;
+  listingCategorySlug: string;
+  listingAvailable: boolean;
+  counterpart: { id: string; name: string; avatarUrl: string | null };
   lastMessage: string;
   lastMessageAt: string;
+  lastMessageMine: boolean;
   unreadCount: number;
+  /** Messages sent before this time have been read by the other person */
+  counterpartLastReadAt: string | null;
+  blockedByMe: boolean;
+  blockedByThem: boolean;
+}
+
+export type MessageType = 'text' | 'image' | 'voice';
+
+export interface MessageAttachment {
+  /** Signed link that expires after an hour; reload the conversation for a fresh one */
+  url: string;
+  mime: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  duration: number | null;
 }
 
 export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
+  type: MessageType;
   body: string;
+  attachment: MessageAttachment | null;
+  deleted: boolean;
   createdAt: string;
+}
+
+export interface MessagePage {
+  items: Message[];
+  hasMore: boolean;
 }
 
 /* ---------- Saved items and notifications ---------- */

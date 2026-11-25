@@ -1,6 +1,7 @@
 
 import mongoose from 'mongoose'
 import bcrypt from 'bcrypt'
+import { publicUrl } from '../../services/storage.service.js'
 
 const userSchema = new mongoose.Schema(
   {
@@ -39,6 +40,13 @@ const userSchema = new mongoose.Schema(
       default: 'user',
     },
 
+    // Buyers can browse, save and chat; sellers can also post ads once an admin approves them
+    accountType: {
+      type: String,
+      enum: ['buyer', 'seller'],
+      default: 'buyer',
+    },
+
     isEmailVerified: {
       type: Boolean,
       default: false,
@@ -46,8 +54,25 @@ const userSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['active', 'suspended'],
+      enum: ['pending', 'active', 'suspended'],
       default: 'active',
+    },
+
+    city: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    // Storage key of the profile photo; the public URL is added in toJSON
+    avatarKey: {
+      type: String,
+      default: null,
+    },
+
+    deletionRequestedAt: {
+      type: Date,
+      default: null,
     },
   },
   {
@@ -70,7 +95,10 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
 // Remove sensitive fields from JSON responses
 userSchema.set('toJSON', {
   transform: (document, returnedObject) => {
+    returnedObject.id = returnedObject._id.toString()
+    returnedObject.avatarUrl = publicUrl(returnedObject.avatarKey)
     delete returnedObject.password
+    delete returnedObject.avatarKey
     delete returnedObject.__v
     return returnedObject
   },

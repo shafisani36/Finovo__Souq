@@ -1,10 +1,15 @@
-import type { UserRole } from '../../types';
+import type { User, UserRole } from '../../types';
 
 /**
  * Role-based access control for the UI.
  * The API stays the source of truth: these checks only decide what to show and where to route.
  * Roles follow the backend user model: "user" (buys and sells) and "admin".
  */
+/** Only approved seller accounts can post and manage ads */
+export function canSell(user: Pick<User, 'role' | 'accountType'> | null | undefined): boolean {
+  return user?.role === 'user' && user.accountType === 'seller';
+}
+
 export const PERMISSIONS = {
   'dashboard:admin': ['admin'],
   'dashboard:user': ['user'],

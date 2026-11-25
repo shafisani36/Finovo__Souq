@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import { BadgeCheck, CalendarDays, Mail, MapPin, Phone, Save, Trash2 } from 'lucide-react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { BadgeCheck, CalendarDays, Camera, Mail, MapPin, Phone, Save, Trash2 } from 'lucide-react';
 import { ApiError, getErrorMessage } from '../../api/errors';
 import { PageHeader } from '../../components/dashboard/PageHeader';
 import { Avatar } from '../../components/ui/Avatar';
@@ -13,6 +13,7 @@ import { useAuth } from '../../features/auth/context/useAuth';
 import { ROLE_LABELS } from '../../features/auth/rbac';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { authService } from '../../services/auth.service';
+import type { User } from '../../types';
 import { formatDate } from '../../utils/format';
 
 /** Accepts 05XXXXXXXX, 5XXXXXXXX or +9665XXXXXXXX and returns +9665XXXXXXXX */
@@ -25,6 +26,8 @@ export function ProfilePage() {
   useDocumentTitle('Profile');
   const { user, setUser } = useAuth();
   const toast = useToast();
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const avatarInput = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({ name: user?.name ?? '', phone: user?.phone ?? '', city: user?.city ?? '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -56,6 +59,29 @@ export function ProfilePage() {
     }
   };
 
+  const changeAvatar = async (request: () => Promise<User>, done: string) => {
+    setAvatarBusy(true);
+    try {
+      setUser(await request());
+      toast.show({ title: done });
+    } catch (error) {
+      toast.show({ title: 'Could not update photo', message: getErrorMessage(error), tone: 'error' });
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const pickAvatar = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      toast.show({ title: 'Choose a JPG, PNG or WebP photo up to 5 MB', tone: 'error' });
+      return;
+    }
+    void changeAvatar(() => authService.uploadAvatar(file), 'Profile photo updated');
+  };
+
   const requestDeletion = async () => {
     setDeleting(true);
     try {
@@ -76,10 +102,21 @@ export function ProfilePage() {
         <section className="card span-4 profile-card">
           <div className="profile-card__cover" aria-hidden="true" />
           <div className="profile-card__head">
-            <Avatar name={user.name} size="lg" />
+            <div className="avatar-edit">
+              <Avatar name={user.name} src={user.avatarUrl} size="xl" />
+              <button type="button" className="avatar-edit__button" onClick={() => avatarInput.current?.click()} disabled={avatarBusy} aria-label="Change profile photo">
+                {avatarBusy ? <span className="btn__spinner" /> : <Camera size={15} />}
+              </button>
+              <input ref={avatarInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={pickAvatar} />
+            </div>
             <div>
               <h2 className="profile-card__name">{user.name}</h2>
               <Badge tone="primary">{ROLE_LABELS[user.role]}</Badge>
+              {user.avatarUrl && (
+                <button type="button" className="link-button" onClick={() => void changeAvatar(() => authService.removeAvatar(), 'Profile photo removed')} disabled={avatarBusy}>
+                  Remove photo
+                </button>
+              )}
             </div>
           </div>
           <ul className="profile-card__rows">

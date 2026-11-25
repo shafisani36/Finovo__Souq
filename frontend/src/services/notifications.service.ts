@@ -10,4 +10,8 @@ export const notificationsService = {
   markRead(id: string): Promise<void> {
     return apiClient.patch<void>(endpoints.notifications.markRead(id));
   },
+
+  markAllRead(): Promise<void> {
+    return apiClient.patch<void>(endpoints.notifications.readAll);
+  },
 };

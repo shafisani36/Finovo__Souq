@@ -225,7 +225,7 @@ export function ListingDetailPage() {
 
           <div className="card">
             <div className="seller-card">
-              <Avatar name={ad.seller.name} size="lg" />
+              <Avatar name={ad.seller.name} src={ad.seller.avatarUrl} size="lg" />
               <div>
                 <strong className="seller-card__name">{ad.seller.name}</strong>
                 <p className="text-muted">Member since {formatDate(ad.seller.memberSince)}</p>

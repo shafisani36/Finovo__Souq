@@ -5,7 +5,7 @@ import { ButtonLink } from '../components/ui/Button';
 import { Logo } from '../components/ui/Logo';
 import { SUPPORT_CONTACT } from '../config/app.config';
 import { useAuth } from '../features/auth/context/useAuth';
-import { ROLE_HOME } from '../features/auth/rbac';
+import { canSell, ROLE_HOME } from '../features/auth/rbac';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import { UserMenu } from './UserMenu';
 
@@ -45,7 +45,7 @@ export function PublicLayout() {
   const menuOpen = menuOpenedOn === location.pathname;
   // The header turns dark over dark sections (landing hero, page titles) and white everywhere else
   const [dark, setDark] = useState(false);
-  const postAdLink = user?.role === 'user' ? '/account/listings/new' : user ? null : '/login?redirect=%2Faccount%2Flistings%2Fnew';
+  const postAdLink = canSell(user) ? '/account/listings/new' : user ? null : '/login?redirect=%2Faccount%2Flistings%2Fnew';
 
   useEffect(() => {
     let frame = 0;

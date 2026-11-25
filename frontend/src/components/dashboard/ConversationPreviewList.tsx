@@ -10,7 +10,7 @@ export function ConversationPreviewList({ conversations, basePath }: { conversat
       {conversations.map((c) => (
         <li key={c.id}>
           <Link to={`${basePath}?c=${c.id}`} className="preview-list__item">
-            <Avatar name={c.counterpart.name} size="sm" />
+            <Avatar name={c.counterpart.name} src={c.counterpart.avatarUrl} size="sm" />
             <div className="preview-list__body">
               <div className="preview-list__row">
                 <strong>{c.counterpart.name}</strong>

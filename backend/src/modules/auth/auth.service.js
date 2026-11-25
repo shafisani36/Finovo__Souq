@@ -14,6 +14,7 @@ import {
 } from '../../services/session.service.js'
 
 import { env } from '../../config/env.js'
+import { notify } from '../../services/notification.service.js'
 
 const createAuthTokens = async (user, req) => {
   const sessionId = new mongoose.Types.ObjectId().toString()
@@ -49,7 +50,7 @@ const createAuthTokens = async (user, req) => {
 }
 
 export const registerUser = async (data, req) => {
-  const { name, email, password, phone } = data
+  const { name, email, password, phone, accountType = 'buyer' } = data
 
   const existingUser = await User.findOne({
     email: email.toLowerCase().trim(),
@@ -61,12 +62,27 @@ export const registerUser = async (data, req) => {
     throw error
   }
 
+  const isSeller = accountType === 'seller'
   const user = await User.create({
     name,
     email,
     password,
     phone,
+    accountType,
+    status: isSeller ? 'pending' : 'active',
   })
+
+  // A seller can sign in only after an admin approves the account
+  if (isSeller) {
+    const admins = await User.find({ role: 'admin', status: 'active' }).select('_id')
+    await Promise.all(admins.map((admin) => notify(admin._id, {
+      type: 'system',
+      title: 'New seller waiting for approval',
+      body: `${user.name} (${user.email}) signed up as a seller.`,
+      link: '/admin/users?status=pending',
+    })))
+    return { user: user.toJSON(), pendingApproval: true }
+  }
 
   const tokens = await createAuthTokens(user, req)
 
@@ -87,17 +103,20 @@ export const loginUser = async (data, req) => {
     throw error
   }
 
-  if (user.status !== 'active') {
-    const error = new Error('Your account is suspended')
-    error.statusCode = 403
-    throw error
-  }
-
   const isPasswordValid = await user.comparePassword(data.password)
 
   if (!isPasswordValid) {
     const error = new Error('Invalid email or password')
     error.statusCode = 401
+    throw error
+  }
+
+  // Checked after the password, so the account state is only shown to its owner
+  if (user.status !== 'active') {
+    const error = new Error(user.status === 'pending'
+      ? 'Your seller account is waiting for admin approval. We will email you once it is approved.'
+      : 'Your account is suspended')
+    error.statusCode = 403
     throw error
   }
 

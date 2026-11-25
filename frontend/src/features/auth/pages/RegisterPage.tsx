@@ -1,13 +1,15 @@
 import { useState, type FormEvent } from 'react';
-import { Check, Eye, EyeOff, Lock, Mail, Phone, User as UserIcon } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Check, Clock, Eye, EyeOff, Lock, Mail, Phone, ShoppingBag, Store, User as UserIcon } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError, getErrorMessage } from '../../../api/errors';
 import { Button } from '../../../components/ui/Button';
 import { InputField } from '../../../components/ui/Field';
+import { EmptyState } from '../../../components/ui/States';
 import { useDocumentTitle } from '../../../hooks/useDocumentTitle';
 import { AuthLayout } from '../../../layouts/AuthLayout';
 import { useAuth } from '../context/useAuth';
 import { safeRedirectFor } from '../rbac';
+import type { AccountType } from '../../../types';
 import { EMAIL_PATTERN, PASSWORD_RULES, passwordTooLong } from '../validation';
 
 type FormErrors = Partial<Record<'name' | 'phone' | 'email' | 'password' | 'confirm' | 'terms' | 'form', string>>;
@@ -25,6 +27,8 @@ export function RegisterPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirm: '' });
+  const [accountType, setAccountType] = useState<AccountType>('buyer');
+  const [awaitingApproval, setAwaitingApproval] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -62,8 +66,13 @@ export function RegisterPage() {
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
+        accountType,
         ...(phone ? { phone } : {}),
       });
+      if (!user) {
+        setAwaitingApproval(true);
+        return;
+      }
       navigate(safeRedirectFor(user.role, searchParams.get('redirect')), { replace: true });
     } catch (error) {
       if (error instanceof ApiError && error.code === 'CONFLICT') {
@@ -78,9 +87,34 @@ export function RegisterPage() {
     }
   };
 
+  if (awaitingApproval) {
+    return (
+      <AuthLayout showTabs={false} title="Thanks for signing up" subtitle="Your seller account has been created.">
+        <EmptyState
+          icon={<Clock size={26} />}
+          title="Waiting for admin approval"
+          text={`Our team checks every seller account. We will email ${form.email.trim()} as soon as it is approved, and then you can sign in and post ads.`}
+          action={<Link to="/" className="btn">Back to home</Link>}
+        />
+      </AuthLayout>
+    );
+  }
+
   return (
-    <AuthLayout title="Create your account" subtitle="One free account to post ads, save ads and chat with sellers.">
+    <AuthLayout title="Create your account" subtitle="Buy with a free account, or sign up as a seller to post ads.">
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
+        <div className="segmented segmented--block" role="radiogroup" aria-label="Account type">
+          {([
+            { value: 'buyer', label: 'I want to buy', icon: ShoppingBag },
+            { value: 'seller', label: 'I want to sell', icon: Store },
+          ] as const).map((option) => (
+            <button key={option.value} type="button" role="radio" aria-checked={accountType === option.value} className="segmented__item" onClick={() => setAccountType(option.value)}>
+              <option.icon size={16} />
+              {option.label}
+            </button>
+          ))}
+        </div>
+        {accountType === 'seller' && <p className="auth-form__note">Seller accounts are checked by our team. You can sign in once yours is approved.</p>}
         {errors.form && (
           <div className="alert alert--danger" role="alert">
             {errors.form}

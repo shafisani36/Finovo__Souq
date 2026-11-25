@@ -5,6 +5,7 @@ import { ToastProvider } from '../components/ui/ToastProvider';
 import { AuthProvider } from '../features/auth/context/AuthContext';
 import { GuestRoute } from '../features/auth/guards/GuestRoute';
 import { DashboardRedirect, ProtectedRoute } from '../features/auth/guards/ProtectedRoute';
+import { RealtimeProvider } from '../features/realtime/RealtimeProvider';
 import { SavedListingsProvider } from '../features/saved/SavedListingsProvider';
 import { PublicLayout } from '../layouts/PublicLayout';
 import { HomePage } from '../pages/public/HomePage';
@@ -43,70 +44,72 @@ export function AppRouter() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ToastProvider>
-          <SavedListingsProvider>
-            <ScrollToTop />
-            <Suspense fallback={<LoadingState fullScreen />}>
-              <Routes>
-                {/* Public marketplace */}
-                <Route element={<PublicLayout />}>
-                  <Route index element={<HomePage />} />
-                  <Route path="search" element={<BrowsePage />} />
-                  <Route path="listings/:id" element={<ListingDetailPage />} />
-                  <Route path="about" element={<AboutPage />} />
-                  <Route path="faq" element={<FaqPage />} />
-                  <Route path="contact" element={<ContactPage />} />
-                  <Route path="*" element={<NotFoundPage />} />
-                </Route>
+        <RealtimeProvider>
+          <ToastProvider>
+            <SavedListingsProvider>
+              <ScrollToTop />
+              <Suspense fallback={<LoadingState fullScreen />}>
+                <Routes>
+                  {/* Public marketplace */}
+                  <Route element={<PublicLayout />}>
+                    <Route index element={<HomePage />} />
+                    <Route path="search" element={<BrowsePage />} />
+                    <Route path="listings/:id" element={<ListingDetailPage />} />
+                    <Route path="about" element={<AboutPage />} />
+                    <Route path="faq" element={<FaqPage />} />
+                    <Route path="contact" element={<ContactPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Route>
 
-                {/* Guest-only auth */}
-                <Route path="login" element={guest(<LoginPage />)} />
-                <Route path="register" element={guest(<RegisterPage />)} />
-                <Route path="forgot-password" element={guest(<ForgotPasswordPage />)} />
+                  {/* Guest-only auth */}
+                  <Route path="login" element={guest(<LoginPage />)} />
+                  <Route path="register" element={guest(<RegisterPage />)} />
+                  <Route path="forgot-password" element={guest(<ForgotPasswordPage />)} />
 
-                <Route path="dashboard" element={<DashboardRedirect />} />
+                  <Route path="dashboard" element={<DashboardRedirect />} />
 
-                {/* Admin */}
-                <Route
-                  path="admin"
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <DashboardLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                  <Route path="dashboard" element={<AdminDashboardPage />} />
-                  <Route path="moderation" element={<ModerationPage />} />
-                  <Route path="reports" element={<ReportsPage />} />
-                  <Route path="users" element={<UsersPage />} />
-                  <Route path="notifications" element={<NotificationsPage />} />
-                  <Route path="profile" element={<ProfilePage />} />
-                </Route>
+                  {/* Admin */}
+                  <Route
+                    path="admin"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <DashboardLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route path="dashboard" element={<AdminDashboardPage />} />
+                    <Route path="moderation" element={<ModerationPage />} />
+                    <Route path="reports" element={<ReportsPage />} />
+                    <Route path="users" element={<UsersPage />} />
+                    <Route path="notifications" element={<NotificationsPage />} />
+                    <Route path="profile" element={<ProfilePage />} />
+                  </Route>
 
-                {/* Member account: buying and selling */}
-                <Route
-                  path="account"
-                  element={
-                    <ProtectedRoute allowedRoles={['user']}>
-                      <DashboardLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                  <Route path="dashboard" element={<UserDashboardPage />} />
-                  <Route path="listings" element={<MyListingsPage />} />
-                  <Route path="listings/new" element={<PostAdPage />} />
-                  <Route path="listings/:id/edit" element={<PostAdPage />} />
-                  <Route path="saved" element={<SavedPage />} />
-                  <Route path="messages" element={<MessagesPage />} />
-                  <Route path="notifications" element={<NotificationsPage />} />
-                  <Route path="profile" element={<ProfilePage />} />
-                </Route>
-              </Routes>
-            </Suspense>
-          </SavedListingsProvider>
-        </ToastProvider>
+                  {/* Member account: buying and selling */}
+                  <Route
+                    path="account"
+                    element={
+                      <ProtectedRoute allowedRoles={['user']}>
+                        <DashboardLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route path="dashboard" element={<UserDashboardPage />} />
+                    <Route path="listings" element={<MyListingsPage />} />
+                    <Route path="listings/new" element={<PostAdPage />} />
+                    <Route path="listings/:id/edit" element={<PostAdPage />} />
+                    <Route path="saved" element={<SavedPage />} />
+                    <Route path="messages" element={<MessagesPage />} />
+                    <Route path="notifications" element={<NotificationsPage />} />
+                    <Route path="profile" element={<ProfilePage />} />
+                  </Route>
+                </Routes>
+              </Suspense>
+            </SavedListingsProvider>
+          </ToastProvider>
+        </RealtimeProvider>
       </AuthProvider>
     </BrowserRouter>
   );

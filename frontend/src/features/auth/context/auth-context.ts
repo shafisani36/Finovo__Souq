@@ -6,7 +6,8 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (payload: RegisterPayload) => Promise<User>;
+  /** Resolves to null when the account waits for admin approval */
+  register: (payload: RegisterPayload) => Promise<User | null>;
   startSession: (session: AuthSession) => void;
   logout: () => Promise<void>;
   setUser: (user: User) => void;

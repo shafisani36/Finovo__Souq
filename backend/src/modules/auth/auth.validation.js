@@ -4,7 +4,11 @@ import { validatePassword } from '../../services/password.service.js'
 export const validateRegister = (data) => {
   const errors = []
 
-  const { name, email, password, phone } = data
+  const { name, email, password, phone, accountType } = data
+
+  if (accountType !== undefined && !['buyer', 'seller'].includes(accountType)) {
+    errors.push('Choose a buyer or seller account')
+  }
 
   if (!name || typeof name !== 'string' || name.trim().length < 2) {
     errors.push('Name must contain at least 2 characters')
@@ -65,4 +69,25 @@ export const validateLogin = (data) => {
     isValid: errors.length === 0,
     errors,
   }
+}
+const isEmail = (value) => typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+
+export const validateForgotPassword = (data) => {
+  const errors = {}
+  if (!isEmail(data.email)) errors.email = 'Please provide a valid email address'
+  return errors
+}
+
+export const validateResetCode = (data) => {
+  const errors = validateForgotPassword(data)
+  if (typeof data.otp !== 'string' || !/^\d{6}$/.test(data.otp)) errors.otp = 'Enter the 6-digit code from the email'
+  return errors
+}
+
+export const validateResetPassword = (data) => {
+  const errors = validateForgotPassword(data)
+  if (typeof data.resetToken !== 'string' || !/^[a-f0-9]{64}$/.test(data.resetToken)) errors.resetToken = 'Reset session is missing'
+  const passwordResult = validatePassword(data.password)
+  if (!passwordResult.isValid) errors.password = passwordResult.errors[0]
+  return errors
 }

@@ -24,7 +24,7 @@ export function UserMenu({ showName = true }: { showName?: boolean }) {
   return (
     <div className="dropdown" ref={ref}>
       <button type="button" className="user-chip" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <Avatar name={user.name} size="sm" />
+        <Avatar name={user.name} src={user.avatarUrl} size="sm" />
         {showName && (
           <span className="user-chip__text">
             <strong>{user.name}</strong>

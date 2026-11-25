@@ -39,6 +39,13 @@
   background: none;
   padding: 0;
   font-size: inherit;
+  cursor: pointer;
+}
+
+.link--button:disabled {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  cursor: default;
 }
 
 .count-pill {
@@ -655,9 +662,23 @@
 .auth-form__row {
   display: flex;
   justify-content: flex-end;
-  align-items: center;
   font-size: var(--text-sm);
   margin-block-start: calc(var(--space-2) * -1);
+}
+
+.auth-form .segmented--block {
+  display: flex;
+}
+
+.segmented--block .segmented__item {
+  flex: 1;
+  justify-content: center;
+}
+
+.auth-form__note {
+  margin: calc(var(--space-2) * -1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 .auth-form__switch {

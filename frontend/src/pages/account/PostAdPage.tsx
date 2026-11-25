@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, Clock, ImagePlus, MapPin, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Clock, ImagePlus, MapPin, Send, Star, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiError, getErrorMessage } from '../../api/errors';
 import { PageHeader } from '../../components/dashboard/PageHeader';
@@ -11,11 +11,13 @@ import { InputField, SelectField, TextareaField } from '../../components/ui/Fiel
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { useToast } from '../../components/ui/toast-context';
 import { LISTING_PHOTO_LIMITS, SAUDI_CITIES } from '../../config/app.config';
+import { useAuth } from '../../features/auth/context/useAuth';
+import { canSell } from '../../features/auth/rbac';
 import { useAsync } from '../../hooks/useAsync';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { categoriesService } from '../../services/categories.service';
 import { listingsService } from '../../services/listings.service';
-import type { Category, Listing, ListingDraftPayload, ListingType } from '../../types';
+import type { Category, Listing, ListingDraftPayload, ListingPhoto, ListingType } from '../../types';
 import { formatNumber, formatPrice, LISTING_TYPE_LABELS } from '../../utils/format';
 
 type Step = 0 | 1 | 2 | 3;
@@ -105,9 +107,17 @@ export function PostAdPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   useDocumentTitle(isEdit ? 'Edit ad' : 'Post an ad');
+  const { user } = useAuth();
   const categories = useAsync(() => categoriesService.list(), []);
   const existing = useAsync(() => (id ? listingsService.getById(id) : Promise.resolve(null)), [id]);
 
+  if (!canSell(user)) {
+    return (
+      <div className="card">
+        <EmptyState title="Only seller accounts can post ads" text="Your account is set up for buying. To sell, create a seller account; our team approves it before you can post." action={<ButtonLink to="/search" variant="primary">Browse ads</ButtonLink>} />
+      </div>
+    );
+  }
   if (categories.isLoading || (isEdit && existing.isLoading)) return <LoadingState label="Loading..." />;
   if (categories.error || !categories.data) return <ErrorState error={categories.error} onRetry={categories.reload} />;
   if (isEdit && (existing.error || !existing.data)) return <ErrorState error={existing.error} onRetry={existing.reload} title="We could not load this ad" />;
@@ -130,6 +140,9 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
   const [form, setForm] = useState<FormState>(() => (existing ? formFromListing(existing) : EMPTY_FORM));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<NewPhoto[]>([]);
+  // Photos already on the server; changes to them are saved straight away
+  const [savedPhotos, setSavedPhotos] = useState<ListingPhoto[]>(existing?.photos ?? []);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState('');
   const [submitting, setSubmitting] = useState<'draft' | 'submit' | null>(null);
   const [result, setResult] = useState<Listing | null>(null);
@@ -144,7 +157,7 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
   useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.previewUrl)), []);
 
   const category = categories.find((c) => c.id === form.categoryId);
-  const existingPhotoCount = existing?.photos.length ?? 0;
+  const existingPhotoCount = savedPhotos.length;
   const totalPhotos = existingPhotoCount + photos.length;
   const photosRequired = category?.slug !== 'services';
 
@@ -204,6 +217,23 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
     setPhotos((p) => [...p, ...accepted]);
     setPhotoError([...new Set(problems)].join(' '));
   };
+
+  const changeSavedPhotos = async (request: () => Promise<Listing>) => {
+    setPhotoBusy(true);
+    setPhotoError('');
+    try {
+      setSavedPhotos((await request()).photos);
+    } catch (error) {
+      setPhotoError(getErrorMessage(error));
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const deleteSavedPhoto = (photoId: string) => existing && changeSavedPhotos(() => listingsService.deletePhoto(existing.id, photoId));
+
+  const makeCover = (photoId: string) =>
+    existing && changeSavedPhotos(() => listingsService.reorderPhotos(existing.id, [photoId, ...savedPhotos.map((p) => p.id).filter((id) => id !== photoId)]));
 
   const removePhoto = (photoId: string) => {
     setPhotos((list) => {
@@ -441,10 +471,19 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
             Up to {LISTING_PHOTO_LIMITS.maxCount} photos, JPG, PNG or WebP, max {LISTING_PHOTO_LIMITS.maxSizeBytes / 1024 / 1024} MB each. The first photo is the cover.
           </p>
           <div className="photo-grid">
-            {existing?.photos.map((p) => (
+            {savedPhotos.map((p, index) => (
               <div key={p.id} className="photo-grid__item">
-                <img src={p.url} alt="" />
-                <span className="photo-grid__tag">Saved</span>
+                <img src={p.url} alt={`Photo ${index + 1}`} />
+                {index === 0 ? (
+                  <span className="photo-grid__tag">Cover</span>
+                ) : (
+                  <button type="button" className="photo-grid__cover" onClick={() => void makeCover(p.id)} disabled={photoBusy}>
+                    <Star size={13} /> Make cover
+                  </button>
+                )}
+                <button type="button" className="icon-btn icon-btn--sm photo-grid__remove" onClick={() => void deleteSavedPhoto(p.id)} disabled={photoBusy} aria-label={`Delete photo ${index + 1}`}>
+                  <Trash2 size={14} />
+                </button>
               </div>
             ))}
             {photos.map((p, index) => (
@@ -489,7 +528,7 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
           <p className="card-subtitle">This is how buyers will see your ad once it is approved.</p>
           <div className="ad-preview">
             <div className="ad-preview__media">
-              <ListingImage listing={photos.length ? previewListing : { ...previewListing, photos: existing?.photos ?? [] }} iconSize={72} />
+              <ListingImage listing={savedPhotos.length ? { ...previewListing, photos: savedPhotos } : previewListing} iconSize={72} />
             </div>
             <div className="ad-preview__body">
               <span className="badge badge--primary">

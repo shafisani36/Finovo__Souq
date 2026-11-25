@@ -12,6 +12,7 @@ import { ErrorState } from '../../components/ui/States';
 import { SAUDI_CITIES } from '../../config/app.config';
 import { FAQ_GROUPS } from '../../content/faq';
 import { useAuth } from '../../features/auth/context/useAuth';
+import { canSell } from '../../features/auth/rbac';
 import { useAsync } from '../../hooks/useAsync';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { categoriesService } from '../../services/categories.service';
@@ -46,7 +47,8 @@ export function HomePage() {
   const { user } = useAuth();
   const categories = useAsync(() => categoriesService.list(), []);
   const latest = useAsync(() => listingsService.search({ sort: 'newest', pageSize: 8 }), []);
-  const joinLink = user ? (user.role === 'user' ? '/account/listings/new' : '/admin/dashboard') : '/register';
+  const isSeller = canSell(user);
+  const joinLink = !user ? '/register' : user.role === 'admin' ? '/admin/dashboard' : isSeller ? '/account/listings/new' : '/search';
 
   return (
     <>
@@ -95,8 +97,8 @@ export function HomePage() {
           ))}
           <Link to={joinLink} className="stat-join" data-reveal style={revealDelay(3)}>
             <span className="stat-join__pill">Free account</span>
-            <strong>{user ? 'Post your next ad' : 'Join Finovo Souq'}</strong>
-            <span className="stat-join__text">{user ? 'It goes live after a quick review.' : 'Buy and sell with one account.'}</span>
+            <strong>{!user ? 'Join Finovo Souq' : isSeller ? 'Post your next ad' : 'Find your next deal'}</strong>
+            <span className="stat-join__text">{!user ? 'Sign up free to buy, or as a seller to post ads.' : isSeller ? 'It goes live after a quick review.' : 'Browse thousands of checked ads.'}</span>
             <span className="stat-join__arrow" aria-hidden="true">
               <ArrowRight size={18} />
             </span>

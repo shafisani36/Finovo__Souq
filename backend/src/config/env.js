@@ -32,4 +32,15 @@ export const env = {
   REDIS_HOST: process.env.REDIS_HOST || '127.0.0.1',
   REDIS_PORT: Number(process.env.REDIS_PORT) || 6379,
   REDIS_PASSWORD: process.env.REDIS_PASSWORD || '',
+
+  // Uploaded photos and voice messages; keep this folder out of the web root and back it up
+  UPLOAD_DIR: process.env.UPLOAD_DIR || 'uploads',
+
+  // SMTP for password reset codes (same names as the Laravel .env, so the block can be pasted as is)
+  MAIL_HOST: process.env.MAIL_HOST || '',
+  MAIL_PORT: Number(process.env.MAIL_PORT) || 587,
+  MAIL_USERNAME: process.env.MAIL_USERNAME || '',
+  MAIL_PASSWORD: process.env.MAIL_PASSWORD || '',
+  MAIL_FROM_ADDRESS: process.env.MAIL_FROM_ADDRESS || process.env.MAIL_USERNAME || '',
+  MAIL_FROM_NAME: process.env.MAIL_FROM_NAME || 'Finovo Souq',
 }

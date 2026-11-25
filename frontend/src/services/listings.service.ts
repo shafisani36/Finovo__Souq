@@ -4,7 +4,6 @@ import type {
   Listing,
   ListingAvailability,
   ListingDraftPayload,
-  ListingPhoto,
   ListingReport,
   ListingSearchParams,
   Paginated,
@@ -32,10 +31,19 @@ export const listingsService = {
     return apiClient.patch<Listing>(endpoints.listings.byId(id), payload);
   },
 
-  uploadPhotos(id: string, files: File[]): Promise<ListingPhoto[]> {
+  uploadPhotos(id: string, files: File[]): Promise<Listing> {
     const formData = new FormData();
     files.forEach((file) => formData.append('photos', file));
-    return apiClient.post<ListingPhoto[]>(endpoints.listings.photos(id), formData, { timeoutMs: 60000 });
+    return apiClient.post<Listing>(endpoints.listings.photos(id), formData, { timeoutMs: 60000 });
+  },
+
+  deletePhoto(id: string, photoId: string): Promise<Listing> {
+    return apiClient.delete<Listing>(endpoints.listings.photo(id, photoId));
+  },
+
+  /** Saves the photo order; the first photo becomes the cover */
+  reorderPhotos(id: string, photoIds: string[]): Promise<Listing> {
+    return apiClient.patch<Listing>(endpoints.listings.photoOrder(id), { photoIds });
   },
 
   submit(id: string): Promise<Listing> {

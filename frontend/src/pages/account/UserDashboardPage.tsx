@@ -17,6 +17,7 @@ import { ListingStatusBadge } from '../../components/ui/Badge';
 import { Button, ButtonLink } from '../../components/ui/Button';
 import { EmptyState, ErrorState, SkeletonBlock } from '../../components/ui/States';
 import { useAuth } from '../../features/auth/context/useAuth';
+import { canSell } from '../../features/auth/rbac';
 import { useAsync } from '../../hooks/useAsync';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { dashboardService, type DashboardRange } from '../../services/dashboard.service';
@@ -91,9 +92,11 @@ export function UserDashboardPage() {
             <Button icon={<Download size={16} />} onClick={exportData} disabled={!data}>
               Export
             </Button>
-            <ButtonLink to="/account/listings/new" variant="primary" icon={<PlusCircle size={16} />}>
-              Post an ad
-            </ButtonLink>
+            {canSell(user) && (
+              <ButtonLink to="/account/listings/new" variant="primary" icon={<PlusCircle size={16} />}>
+                Post an ad
+              </ButtonLink>
+            )}
           </>
         }
       />

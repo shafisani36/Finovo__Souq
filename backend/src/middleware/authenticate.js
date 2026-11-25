@@ -3,70 +3,72 @@ import { verifyAccessToken } from '../services/jwt.service.js'
 import User from '../modules/users/user.model.js'
 import { isSessionActive } from '../services/session.service.js'
 
+const unauthorized = (message) => {
+  const error = new Error(message)
+  error.statusCode = 401
+  return error
+}
+
+/**
+ * Checks an access token, its session and the account behind it.
+ * Shared by HTTP requests and Socket.IO connections.
+ */
+export const getUserFromToken = async (token) => {
+  if (!token) throw unauthorized('Access token is required')
+
+  let decoded
+  try {
+    decoded = verifyAccessToken(token)
+  } catch {
+    throw unauthorized('Invalid or expired access token')
+  }
+
+  if (!decoded.sid || !decoded.sub) {
+    throw unauthorized('Invalid access token session')
+  }
+
+  const sessionIsActive = await isSessionActive(decoded.sid, decoded.sub)
+
+  if (!sessionIsActive) {
+    throw unauthorized('Session expired or revoked')
+  }
+
+  const user = await User.findById(decoded.sub).select('_id role status accountType')
+
+  if (!user || user.status !== 'active') {
+    throw unauthorized('Invalid or inactive user')
+  }
+
+  return { id: user._id.toString(), role: user.role, accountType: user.accountType }
+}
+
+const bearerToken = (req) => {
+  const authHeader = req.headers.authorization
+  return authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null
+}
+
 const authenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      const error = new Error('Authentication required')
-      error.statusCode = 401
-      throw error
-    }
-
-    const token = authHeader.split(' ')[1]
-
-    if (!token) {
-      const error = new Error('Access token is required')
-      error.statusCode = 401
-      throw error
-    }
-
-    const decoded = verifyAccessToken(token)
-
-    if (!decoded.sid || !decoded.sub) {
-      const error = new Error('Invalid access token session')
-      error.statusCode = 401
-      throw error
-    }
-
-    const sessionIsActive = await isSessionActive(
-      decoded.sid,
-      decoded.sub
-    )
-
-    if (!sessionIsActive) {
-      const error = new Error('Session expired or revoked')
-      error.statusCode = 401
-      throw error
-    }
-
-    const user = await User.findById(decoded.sub).select(
-      '_id name email role status'
-    )
-
-    if (!user || user.status !== 'active') {
-      const error = new Error('Invalid or inactive user')
-      error.statusCode = 401
-      throw error
-    }
-
-    req.user = {
-      id: user._id.toString(),
-      role: user.role,
-    }
-
+    const token = bearerToken(req)
+    if (!token) throw unauthorized('Authentication required')
+    req.user = await getUserFromToken(token)
     next()
   } catch (error) {
-    if (
-      ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(
-        error.name
-      )
-    ) {
-      error.statusCode = 401
-    }
-
     next(error)
   }
+}
+
+/** For public pages that show more to the owner or an admin; an invalid token is treated as a guest */
+export const optionalAuthenticate = async (req, res, next) => {
+  const token = bearerToken(req)
+  if (token) {
+    try {
+      req.user = await getUserFromToken(token)
+    } catch {
+      req.user = undefined
+    }
+  }
+  next()
 }
 
 export default authenticate

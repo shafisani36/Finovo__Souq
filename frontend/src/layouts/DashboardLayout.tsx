@@ -5,7 +5,7 @@ import { ButtonLink } from '../components/ui/Button';
 import { Logo } from '../components/ui/Logo';
 import { useAuth } from '../features/auth/context/useAuth';
 import { NAVIGATION } from '../features/auth/navigation';
-import { ROLE_HOME, rolePath } from '../features/auth/rbac';
+import { canSell, ROLE_HOME, rolePath } from '../features/auth/rbac';
 import { UserMenu } from './UserMenu';
 import { useNavCounters } from './useNavCounters';
 
@@ -24,7 +24,7 @@ export function DashboardLayout() {
   const setSidebarOpen = (open: boolean) => setSidebarOpenedOn(open ? location.pathname : null);
   const [query, setQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
-  const counters = useNavCounters(user?.role ?? 'user');
+  const counters = useNavCounters(user?.role ?? 'user', user?.id);
 
   // "/" focuses the search box, like most dashboards
   useEffect(() => {
@@ -38,8 +38,9 @@ export function DashboardLayout() {
   }, []);
 
   if (!user) return null;
-  const groups = NAVIGATION[user.role];
   const isAdmin = user.role === 'admin';
+  const isSeller = canSell(user);
+  const groups = NAVIGATION[user.role].filter((group) => !group.sellerOnly || isSeller);
 
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -86,7 +87,7 @@ export function DashboardLayout() {
                 Open moderation
               </Link>
             </div>
-          ) : (
+          ) : isSeller ? (
             <div className="sidebar-note">
               <span className="sidebar-note__icon" aria-hidden="true">
                 <PlusCircle size={16} />
@@ -97,7 +98,7 @@ export function DashboardLayout() {
                 Post an ad
               </Link>
             </div>
-          )}
+          ) : null}
           <Link to="/" className="sidebar__link">
             <ArrowLeft size={18} aria-hidden="true" />
             <span>Back to marketplace</span>
@@ -136,7 +137,7 @@ export function DashboardLayout() {
               <Bell size={18} />
               {counters.unreadNotifications ? <span className="icon-btn__dot" /> : null}
             </Link>
-            {!isAdmin && (
+            {isSeller && (
               <ButtonLink to="/account/listings/new" variant="primary" size="sm" icon={<PlusCircle size={16} />} className="hide-md">
                 Post an ad
               </ButtonLink>

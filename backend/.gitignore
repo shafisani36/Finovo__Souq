@@ -25,3 +25,5 @@ Thumbs.db
 
 # Editor
 .vscode/r
+# Uploaded photos and voice messages (user data, never commit)
+uploads/

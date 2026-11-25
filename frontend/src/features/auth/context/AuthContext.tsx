@@ -4,24 +4,6 @@ import { authService } from '../../../services/auth.service';
 import type { AuthSession, RegisterPayload, User } from '../../../types';
 import { AuthContext, type AuthContextValue } from './auth-context';
 
-/**
- * Restores a stored session on load.
- * GET /auth/me confirms the token (the API client refreshes it once if it expired) and returns the
- * current role; the rest of the profile comes from the copy saved at sign-in or from a refresh.
- */
-async function restoreSession(): Promise<User | null> {
-  const me = await authService.getMe();
-  const stored = apiClient.getSessionUser();
-  if (stored && stored.id === me.id) {
-    const user = { ...stored, role: me.role };
-    apiClient.setSessionUser(user);
-    return user;
-  }
-  // No usable copy of the profile: a refresh returns the full user
-  const token = await apiClient.refreshAccessToken();
-  return token ? apiClient.getSessionUser() : null;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(() => Boolean(apiClient.getAccessToken()));
@@ -29,11 +11,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!apiClient.getAccessToken()) return;
     let active = true;
-    restoreSession()
+    // The API client refreshes an expired access token once before giving up
+    authService
+      .getProfile()
       .then((restored) => {
         if (!active) return;
-        if (restored) setUserState(restored);
-        else apiClient.setSession(null);
+        setUserState(restored);
       })
       .catch(() => {
         if (active) apiClient.setSession(null);
@@ -69,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(
     async (payload: RegisterPayload) => {
       const session = await authService.register(payload);
+      if (!session) return null;
       startSession(session);
       return session.user;
     },
@@ -87,10 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const setUser = useCallback((next: User) => {
-    apiClient.setSessionUser(next);
-    setUserState(next);
-  }, []);
+  const setUser = useCallback((next: User) => setUserState(next), []);
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -82,7 +82,6 @@ export function LoginPage() {
           }
         />
         <div className="auth-form__row">
-          <span />
           <Link to="/forgot-password" className="link">
             Forgot password?
           </Link>
