@@ -1,4 +1,5 @@
-import { findCategory, SAUDI_CITIES } from '../../config/catalog.js'
+import { SAUDI_CITIES } from '../../config/catalog.js'
+import { getCategoryTree } from '../categories/category.tree.js'
 import ApiError from '../../utils/ApiError.js'
 import { toText } from '../../utils/pagination.js'
 
@@ -21,9 +22,11 @@ const cleanAttributes = (category, input, errors) => {
 
     if (field.inputType === 'number') {
       const value = Number(raw)
-      const maxYear = new Date().getFullYear() + 1
+      // A year can never be later than next year, whatever maximum the admin set
+      const max = field.fieldKey === 'year' ? Math.min(field.max ?? Infinity, new Date().getFullYear() + 1) : field.max
       if (!Number.isFinite(value) || value < 0) errors[key] = `${field.label} must be a positive number`
-      else if (field.fieldKey === 'year' && (value < 1950 || value > maxYear)) errors[key] = 'Enter a valid year'
+      else if (field.min !== undefined && value < field.min) errors[key] = `${field.label} must be at least ${field.min}`
+      else if (max !== undefined && value > max) errors[key] = `${field.label} must be at most ${max}`
       else attributes[field.fieldKey] = value
     } else {
       const value = toText(String(raw)).slice(0, 80)
@@ -35,11 +38,17 @@ const cleanAttributes = (category, input, errors) => {
   return attributes
 }
 
-/** Validates a full ad; for edits pass the merged old and new values */
-export const validateListing = (body) => {
+/**
+ * Validates a full ad; for edits pass the merged old and new values.
+ * Ads go only into a final category (one without subcategories). An ad already in a category
+ * that an admin later hid can still be edited, but no new ad can be put there.
+ */
+export const validateListing = async (body, { currentCategoryId } = {}) => {
   const errors = {}
-  const category = findCategory(toText(body.categoryId))
-  if (!category) throw ApiError.validation({ categoryId: 'Choose a category' })
+  const tree = await getCategoryTree()
+  const category = tree.nodes.get(toText(body.categoryId))
+  if (!category || !(category.isActive || category.id === currentCategoryId)) throw ApiError.validation({ categoryId: 'Choose a category' })
+  if (!category.isLeaf) throw ApiError.validation({ categoryId: `Choose a subcategory of ${category.name}` })
 
   const title = toText(body.title)
   const description = toText(body.description)
@@ -58,5 +67,5 @@ export const validateListing = (body) => {
   const attributes = cleanAttributes(category, body.attributes, errors)
   if (Object.keys(errors).length) throw ApiError.validation(errors)
 
-  return { categoryId: category.id, listingType, title, description, price, city, district, attributes }
+  return { categoryId: category.id, categoryPath: category.path, listingType, title, description, price, city, district, attributes }
 }

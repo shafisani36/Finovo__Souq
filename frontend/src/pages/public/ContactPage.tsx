@@ -1,19 +1,21 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowRight, Clock, Mail, MailCheck, MapPin, MessageSquareText, Send, ShieldCheck, User } from 'lucide-react';
+import { ArrowRight, Clock, Mail, MailCheck, MapPin, MessageSquareText, Phone, Send, ShieldCheck, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ApiError, getErrorMessage } from '../../api/errors';
 import { PageHero } from '../../components/marketing/PageHero';
 import { Button } from '../../components/ui/Button';
 import { InputField, TextareaField } from '../../components/ui/Field';
-import { SUPPORT_CONTACT } from '../../config/app.config';
 import { useAuth } from '../../features/auth/context/useAuth';
 import { EMAIL_PATTERN } from '../../features/auth/validation';
+import { useAsync } from '../../hooks/useAsync';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import { settingsService } from '../../services/settings.service';
 import { SUPPORT_TOPICS, supportService, type SupportMessagePayload } from '../../services/support.service';
 
 type Errors = Partial<Record<'name' | 'email' | 'topic' | 'message' | 'form', string>>;
 
 export function ContactPage() {
+  const contact = useAsync(() => settingsService.get(), []).data?.contact;
   useDocumentTitle('Contact us');
   const { user } = useAuth();
   const [form, setForm] = useState({ name: user?.name ?? '', email: user?.email ?? '', topic: '', message: '' });
@@ -67,33 +69,52 @@ export function ContactPage() {
                 <p className="contact-aside__text">Questions about an ad, your account or something that does not look right? We read every message.</p>
               </div>
               <ul className="contact-aside__list">
-                <li>
-                  <span className="contact-aside__icon">
-                    <Mail size={18} />
-                  </span>
-                  <span>
-                    <span className="contact-aside__label">Email</span>
-                    <a href={`mailto:${SUPPORT_CONTACT.email}`}>{SUPPORT_CONTACT.email}</a>
-                  </span>
-                </li>
-                <li>
-                  <span className="contact-aside__icon">
-                    <Clock size={18} />
-                  </span>
-                  <span>
-                    <span className="contact-aside__label">Support hours</span>
-                    {SUPPORT_CONTACT.hours}
-                  </span>
-                </li>
-                <li>
-                  <span className="contact-aside__icon">
-                    <MapPin size={18} />
-                  </span>
-                  <span>
-                    <span className="contact-aside__label">Office</span>
-                    {SUPPORT_CONTACT.city}
-                  </span>
-                </li>
+                {contact?.email && (
+                  <li>
+                    <span className="contact-aside__icon">
+                      <Mail size={18} />
+                    </span>
+                    <span>
+                      <span className="contact-aside__label">Email</span>
+                      <a href={`mailto:${contact.email}`}>{contact.email}</a>
+                    </span>
+                  </li>
+                )}
+                {contact?.phone && (
+                  <li>
+                    <span className="contact-aside__icon">
+                      <Phone size={18} />
+                    </span>
+                    <span>
+                      <span className="contact-aside__label">Phone</span>
+                      <a href={`tel:${contact.phone.replace(/\s/g, '')}`} dir="ltr">
+                        {contact.phone}
+                      </a>
+                    </span>
+                  </li>
+                )}
+                {contact?.hours && (
+                  <li>
+                    <span className="contact-aside__icon">
+                      <Clock size={18} />
+                    </span>
+                    <span>
+                      <span className="contact-aside__label">Support hours</span>
+                      {contact.hours}
+                    </span>
+                  </li>
+                )}
+                {contact?.city && (
+                  <li>
+                    <span className="contact-aside__icon">
+                      <MapPin size={18} />
+                    </span>
+                    <span>
+                      <span className="contact-aside__label">Office</span>
+                      {contact.city}
+                    </span>
+                  </li>
+                )}
               </ul>
               <div className="contact-aside__faq">
                 <p>Most questions are already answered in the FAQ.</p>

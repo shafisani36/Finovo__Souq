@@ -1,5 +1,5 @@
 import User from '../users/user.model.js'
-import { findCategory } from '../../config/catalog.js'
+import { categorySummary, getCategoryTree } from '../categories/category.tree.js'
 import { publicUrl } from '../../services/storage.service.js'
 import Listing, { PUBLIC_FILTER } from './listing.model.js'
 
@@ -9,7 +9,8 @@ import Listing, { PUBLIC_FILTER } from './listing.model.js'
  */
 export const toListingViews = async (docs) => {
   const sellerIds = [...new Set(docs.map((d) => d.seller.toString()))]
-  const [sellers, activeCounts] = await Promise.all([
+  const [tree, sellers, activeCounts] = await Promise.all([
+    getCategoryTree(),
     User.find({ _id: { $in: sellerIds } }).select('name city phone avatarKey createdAt').lean(),
     Listing.aggregate([
       { $match: { ...PUBLIC_FILTER, seller: { $in: docs.map((d) => d.seller) } } },
@@ -22,7 +23,6 @@ export const toListingViews = async (docs) => {
   return docs.map((d) => {
     const sellerId = d.seller.toString()
     const seller = sellerById.get(sellerId)
-    const category = findCategory(d.categoryId)
     return {
       id: d._id.toString(),
       sellerId,
@@ -36,8 +36,7 @@ export const toListingViews = async (docs) => {
         activeListings: activeById.get(sellerId) ?? 0,
       },
       categoryId: d.categoryId,
-      categorySlug: category?.slug ?? '',
-      categoryName: category?.name ?? '',
+      ...categorySummary(tree, d.categoryId),
       listingType: d.listingType,
       title: d.title,
       description: d.description,
@@ -54,6 +53,8 @@ export const toListingViews = async (docs) => {
       createdAt: d.createdAt,
       updatedAt: d.updatedAt,
       publishedAt: d.publishedAt,
+      expiresAt: d.expiresAt ?? null,
+      featuredUntil: d.featuredUntil && d.featuredUntil > new Date() ? d.featuredUntil : null,
     }
   })
 }

@@ -14,13 +14,13 @@ function StatusBar() {
   );
 }
 
-type ShowcaseAd = Pick<Listing, 'id' | 'title' | 'price' | 'listingType' | 'city' | 'photos' | 'categorySlug'>;
+type ShowcaseAd = Pick<Listing, 'id' | 'title' | 'price' | 'listingType' | 'city' | 'photos' | 'categoryIcon'>;
 
 /** Fills the phones until there are enough live ads, so the hero never looks empty on a new site */
 const SAMPLE_ADS: ShowcaseAd[] = [
-  { id: 'sample-car', title: 'Toyota Camry 2022, low mileage', price: 89000, listingType: 'sale', city: 'Riyadh', photos: [], categorySlug: 'cars' },
-  { id: 'sample-phone', title: 'iPhone 15 Pro, 256 GB', price: 3900, listingType: 'sale', city: 'Jeddah', photos: [], categorySlug: 'electronics' },
-  { id: 'sample-flat', title: '2 bedroom apartment', price: 48000, listingType: 'rent', city: 'Dammam', photos: [], categorySlug: 'property' },
+  { id: 'sample-car', title: 'Toyota Camry 2022, low mileage', price: 89000, listingType: 'sale', city: 'Riyadh', photos: [], categoryIcon: 'car' },
+  { id: 'sample-phone', title: 'iPhone 15 Pro, 256 GB', price: 3900, listingType: 'sale', city: 'Jeddah', photos: [], categoryIcon: 'phone' },
+  { id: 'sample-flat', title: '2 bedroom apartment', price: 48000, listingType: 'rent', city: 'Dammam', photos: [], categoryIcon: 'property' },
 ];
 
 /**
@@ -65,7 +65,7 @@ export function PhoneShowcase({ listings, categories }: { listings: Listing[]; c
           </div>
           <p className="phone__label">Categories</p>
           <div className="phone__cats">
-            {categories.slice(0, 5).map((c) => (
+            {categories.filter((c) => c.depth === 0).slice(0, 5).map((c) => (
               <span key={c.id}>
                 <span className="phone__cat-icon">
                   <CategoryIcon icon={c.icon} size={14} />

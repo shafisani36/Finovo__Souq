@@ -1,4 +1,4 @@
-import { findCategory } from '../../config/catalog.js'
+import { getCategoryTree } from '../categories/category.tree.js'
 import { publicUrl, signedUrl } from '../../services/storage.service.js'
 import { notify } from '../../services/notification.service.js'
 import { emitToUser } from '../../realtime/socket.js'
@@ -26,7 +26,8 @@ export const toMessageView = (m) => ({
 /** Builds the inbox rows for one viewer; the other person's email and phone are never included */
 export const toConversationViews = async (conversations, viewerId) => {
   const otherIds = conversations.map((c) => (c.buyer.toString() === viewerId ? c.seller : c.buyer))
-  const [users, listings] = await Promise.all([
+  const [tree, users, listings] = await Promise.all([
+    getCategoryTree(),
     User.find({ _id: { $in: otherIds } }).select('name avatarKey').lean(),
     Listing.find({ _id: { $in: conversations.map((c) => c.listing) } }).select('title price photos categoryId status availability').lean(),
   ])
@@ -45,7 +46,7 @@ export const toConversationViews = async (conversations, viewerId) => {
       listingTitle: listing?.title ?? 'Deleted ad',
       listingPrice: listing?.price ?? 0,
       listingPhotoUrl: publicUrl(listing?.photos?.[0]?.key),
-      listingCategorySlug: findCategory(listing?.categoryId)?.slug ?? '',
+      listingCategoryIcon: tree.nodes.get(listing?.categoryId)?.icon ?? 'tag',
       listingAvailable: listing?.status === 'published' && listing?.availability === 'available',
       counterpart: { id: otherIds[i].toString(), name: other?.name ?? 'Former member', avatarUrl: publicUrl(other?.avatarKey) },
       lastMessage: c.lastMessage.preview,

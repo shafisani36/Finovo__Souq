@@ -1,8 +1,9 @@
 import { useId, useState } from 'react';
 import { ArrowRight, HelpCircle, Mail, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { SUPPORT_CONTACT } from '../../config/app.config';
 import type { FaqItem } from '../../content/faq';
+import { useAsync } from '../../hooks/useAsync';
+import { settingsService } from '../../services/settings.service';
 import { revealDelay } from './reveal';
 
 /**
@@ -10,6 +11,8 @@ import { revealDelay } from './reveal';
  * Below 1040px it becomes a normal vertical accordion.
  */
 export function FaqShowcase({ items }: { items: FaqItem[] }) {
+  const settings = useAsync(() => settingsService.get(), []);
+  const supportEmail = settings.data?.contact.email;
   const [active, setActive] = useState(0);
   const [mobileOpen, setMobileOpen] = useState<number | null>(0);
   const baseId = useId();
@@ -34,9 +37,11 @@ export function FaqShowcase({ items }: { items: FaqItem[] }) {
               </span>
               <h3>Still have a question?</h3>
               <p>Our support team answers within one working day. Tell us what you need and we will help you out.</p>
-              <a href={`mailto:${SUPPORT_CONTACT.email}`} className="faq-show__mail">
-                <Mail size={16} /> {SUPPORT_CONTACT.email}
-              </a>
+              {supportEmail && (
+                <a href={`mailto:${supportEmail}`} className="faq-show__mail">
+                  <Mail size={16} /> {supportEmail}
+                </a>
+              )}
             </div>
             <div className="faq-show__support-actions">
               <Link to="/contact" className="btn btn--night btn--block">

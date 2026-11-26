@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Mail, Menu, PlusCircle, X } from 'lucide-react';
+import { Mail, Megaphone, Menu, PlusCircle, X } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { ButtonLink } from '../components/ui/Button';
 import { Logo } from '../components/ui/Logo';
-import { SUPPORT_CONTACT } from '../config/app.config';
 import { useAuth } from '../features/auth/context/useAuth';
 import { canSell, ROLE_HOME } from '../features/auth/rbac';
+import { useAsync } from '../hooks/useAsync';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import { categoriesService } from '../services/categories.service';
+import { settingsService } from '../services/settings.service';
+import type { SocialNetwork } from '../types';
 import { UserMenu } from './UserMenu';
 
 const NAV_LINKS = [
@@ -17,15 +20,17 @@ const NAV_LINKS = [
   { to: '/contact', label: 'Contact', end: true },
 ];
 
-const CATEGORY_LINKS = [
-  { to: '/search?category=cars', label: 'Cars' },
-  { to: '/search?category=property', label: 'Property' },
-  { to: '/search?category=electronics', label: 'Electronics' },
-  { to: '/search?category=home-furniture', label: 'Home & Furniture' },
-  { to: '/search?category=services', label: 'Services' },
-];
-
 const CURRENT_YEAR = new Date().getFullYear();
+const SOCIAL_LABELS: Record<SocialNetwork, string> = { x: 'X', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', youtube: 'YouTube' };
+const DISMISSED_KEY = 'souq.dismissedAnnouncement';
+
+const readDismissed = () => {
+  try {
+    return sessionStorage.getItem(DISMISSED_KEY);
+  } catch {
+    return null;
+  }
+};
 /** True while a section marked data-header-dark sits right under or behind the header */
 function isOverDarkSection(): boolean {
   const header = document.querySelector('.site-header');
@@ -39,6 +44,25 @@ function isOverDarkSection(): boolean {
 
 export function PublicLayout() {
   const { user } = useAuth();
+  const categories = useAsync(() => categoriesService.list(), []);
+  const topCategories = (categories.data ?? []).filter((c) => c.depth === 0).slice(0, 6);
+  const settings = useAsync(() => settingsService.get(), []);
+  const contact = settings.data?.contact;
+  const socialLinks = Object.entries(settings.data?.social ?? {}).filter(([, url]) => url) as [SocialNetwork, string][];
+  const announcement = settings.data?.announcement;
+  // A closed announcement stays closed for this visit, and comes back when the admin changes the text
+  const [dismissed, setDismissed] = useState(readDismissed);
+  const showAnnouncement = announcement && dismissed !== announcement.text;
+
+  const dismissAnnouncement = () => {
+    if (!announcement) return;
+    setDismissed(announcement.text);
+    try {
+      sessionStorage.setItem(DISMISSED_KEY, announcement.text);
+    } catch {
+      // Storage can be blocked; the bar still closes for this page view
+    }
+  };
   const location = useLocation();
   // The menu belongs to the page it was opened on, so it closes itself on navigation
   const [menuOpenedOn, setMenuOpenedOn] = useState<string | null>(null);
@@ -72,6 +96,29 @@ export function PublicLayout() {
 
   return (
     <div className="public-shell">
+      {showAnnouncement && (
+        <div className={`announcement announcement--${announcement.tone}`} role="status">
+          <div className="container announcement__inner">
+            <Megaphone size={16} aria-hidden="true" />
+            <p>
+              {announcement.text}
+              {announcement.link &&
+                (announcement.link.startsWith('/') ? (
+                  <Link to={announcement.link} className="announcement__link">
+                    Learn more
+                  </Link>
+                ) : (
+                  <a href={announcement.link} className="announcement__link" target="_blank" rel="noopener noreferrer">
+                    Learn more
+                  </a>
+                ))}
+            </p>
+            <button type="button" className="announcement__close" onClick={dismissAnnouncement} aria-label="Close announcement">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
       <header className={`site-header${dark ? ' site-header--dark' : ''}`}>
         <div className="container site-header__inner">
           <Logo tone={dark ? 'light' : 'dark'} />
@@ -115,16 +162,29 @@ export function PublicLayout() {
           <div className="site-footer__brand">
             <Logo tone="light" />
             <p>Buy and sell cars, property, everyday items and services across Saudi Arabia. Finovo Souq connects buyers and sellers directly; we do not handle payments for listed items.</p>
-            <a href={`mailto:${SUPPORT_CONTACT.email}`} className="site-footer__mail">
-              <Mail size={15} /> {SUPPORT_CONTACT.email}
-            </a>
+            {contact?.email && (
+              <a href={`mailto:${contact.email}`} className="site-footer__mail">
+                <Mail size={15} /> {contact.email}
+              </a>
+            )}
+            {socialLinks.length > 0 && (
+              <ul className="site-footer__social" aria-label="Follow us">
+                {socialLinks.map(([network, url]) => (
+                  <li key={network}>
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                      {SOCIAL_LABELS[network]}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           <div>
             <h4>Categories</h4>
             <ul>
-              {CATEGORY_LINKS.map((link) => (
-                <li key={link.to}>
-                  <Link to={link.to}>{link.label}</Link>
+              {topCategories.map((c) => (
+                <li key={c.id}>
+                  <Link to={`/search?category=${c.slug}`}>{c.name}</Link>
                 </li>
               ))}
             </ul>
@@ -136,10 +196,27 @@ export function PublicLayout() {
                 <Link to="/about">About us</Link>
               </li>
               <li>
+                <Link to="/contact">Contact</Link>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4>Help</h4>
+            <ul>
+              <li>
+                <Link to="/help">Help centre</Link>
+              </li>
+              <li>
                 <Link to="/faq">FAQ</Link>
               </li>
               <li>
-                <Link to="/contact">Contact</Link>
+                <Link to="/safety">Safety tips</Link>
+              </li>
+              <li>
+                <Link to="/terms">Terms of use</Link>
+              </li>
+              <li>
+                <Link to="/privacy">Privacy policy</Link>
               </li>
             </ul>
           </div>

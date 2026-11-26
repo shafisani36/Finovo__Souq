@@ -19,6 +19,8 @@ function page<T extends Record<string, ComponentType>>(loader: () => Promise<T>,
 const DashboardLayout = page(() => import('../layouts/DashboardLayout'), 'DashboardLayout');
 const BrowsePage = page(() => import('../pages/public/BrowsePage'), 'BrowsePage');
 const ListingDetailPage = page(() => import('../pages/public/ListingDetailPage'), 'ListingDetailPage');
+const SellerProfilePage = page(() => import('../pages/public/SellerProfilePage'), 'SellerProfilePage');
+const LegalPage = page(() => import('../pages/public/LegalPage'), 'LegalPage');
 const AboutPage = page(() => import('../pages/public/AboutPage'), 'AboutPage');
 const FaqPage = page(() => import('../pages/public/FaqPage'), 'FaqPage');
 const ContactPage = page(() => import('../pages/public/ContactPage'), 'ContactPage');
@@ -30,6 +32,10 @@ const AdminDashboardPage = page(() => import('../pages/admin/AdminDashboardPage'
 const ModerationPage = page(() => import('../pages/admin/ModerationPage'), 'ModerationPage');
 const UsersPage = page(() => import('../pages/admin/UsersPage'), 'UsersPage');
 const ReportsPage = page(() => import('../pages/admin/ReportsPage'), 'ReportsPage');
+const HistoryPage = page(() => import('../pages/admin/HistoryPage'), 'HistoryPage');
+const CategoriesPage = page(() => import('../pages/admin/CategoriesPage'), 'CategoriesPage');
+const SettingsPage = page(() => import('../pages/admin/SettingsPage'), 'SettingsPage');
+const PromotionsPage = page(() => import('../pages/admin/PromotionsPage'), 'PromotionsPage');
 const UserDashboardPage = page(() => import('../pages/account/UserDashboardPage'), 'UserDashboardPage');
 const MyListingsPage = page(() => import('../pages/account/MyListingsPage'), 'MyListingsPage');
 const PostAdPage = page(() => import('../pages/account/PostAdPage'), 'PostAdPage');
@@ -55,9 +61,14 @@ export function AppRouter() {
                     <Route index element={<HomePage />} />
                     <Route path="search" element={<BrowsePage />} />
                     <Route path="listings/:id" element={<ListingDetailPage />} />
+                    <Route path="sellers/:id" element={<SellerProfilePage />} />
                     <Route path="about" element={<AboutPage />} />
                     <Route path="faq" element={<FaqPage />} />
                     <Route path="contact" element={<ContactPage />} />
+                    <Route path="help" element={<LegalPage />} />
+                    <Route path="safety" element={<LegalPage />} />
+                    <Route path="terms" element={<LegalPage />} />
+                    <Route path="privacy" element={<LegalPage />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
 
@@ -81,6 +92,10 @@ export function AppRouter() {
                     <Route path="dashboard" element={<AdminDashboardPage />} />
                     <Route path="moderation" element={<ModerationPage />} />
                     <Route path="reports" element={<ReportsPage />} />
+                    <Route path="history" element={<HistoryPage />} />
+                    <Route path="categories" element={<CategoriesPage />} />
+                    <Route path="settings" element={<SettingsPage />} />
+                    <Route path="promotions" element={<PromotionsPage />} />
                     <Route path="users" element={<UsersPage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
                     <Route path="profile" element={<ProfilePage />} />

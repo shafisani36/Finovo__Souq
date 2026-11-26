@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, Search, Trash2 } from 'lucide-react';
+import { BellOff, BellRing, Heart, Search, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getErrorMessage } from '../../api/errors';
 import { PageHeader } from '../../components/dashboard/PageHeader';
@@ -8,6 +8,7 @@ import { ButtonLink } from '../../components/ui/Button';
 import { EmptyState, ErrorState, SkeletonBlock } from '../../components/ui/States';
 import { useToast } from '../../components/ui/toast-context';
 import { useSavedListings } from '../../features/saved/saved-context';
+import type { SavedSearch } from '../../types';
 import { useAsync } from '../../hooks/useAsync';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { savedService } from '../../services/saved.service';
@@ -25,6 +26,19 @@ export function SavedPage() {
 
   // Hearts toggled on this page hide the card straight away
   const visibleListings = listings.data?.filter((l) => isSaved(l.id)) ?? [];
+
+  const toggleAlerts = async (search: SavedSearch) => {
+    setRemoving(search.id);
+    try {
+      const updated = await savedService.setSearchAlerts(search.id, !search.alertsEnabled);
+      searches.setData((prev) => prev?.map((s) => (s.id === updated.id ? updated : s)) ?? null);
+      toast.show({ title: updated.alertsEnabled ? 'Alerts on' : 'Alerts off', message: updated.alertsEnabled ? `We will notify you about new ads for "${updated.label}".` : updated.label });
+    } catch (error) {
+      toast.show({ title: 'Could not change alerts', message: getErrorMessage(error), tone: 'error' });
+    } finally {
+      setRemoving(null);
+    }
+  };
 
   const removeSearch = async (id: string) => {
     setRemoving(id);
@@ -93,6 +107,17 @@ export function SavedPage() {
                       <span className="text-muted">Saved {formatRelative(s.createdAt)}</span>
                     </span>
                   </Link>
+                  <button
+                    type="button"
+                    className={`icon-btn icon-btn--sm${s.alertsEnabled ? ' is-on' : ''}`}
+                    aria-pressed={s.alertsEnabled}
+                    aria-label={s.alertsEnabled ? `Turn off alerts for ${s.label}` : `Turn on alerts for ${s.label}`}
+                    title={s.alertsEnabled ? 'Alerts on' : 'Alerts off'}
+                    disabled={removing === s.id}
+                    onClick={() => toggleAlerts(s)}
+                  >
+                    {s.alertsEnabled ? <BellRing size={15} /> : <BellOff size={15} />}
+                  </button>
                   <button type="button" className="icon-btn icon-btn--sm" aria-label={`Delete saved search ${s.label}`} disabled={removing === s.id} onClick={() => removeSearch(s.id)}>
                     <Trash2 size={15} />
                   </button>
@@ -101,7 +126,7 @@ export function SavedPage() {
             </ul>
           )}
           <p className="text-muted" style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)' }}>
-            Email and SMS alerts for new matching ads are planned for a later release.
+            With alerts on, you get a notification when a new ad matches the search (at most one per search each hour).
           </p>
         </section>
       )}

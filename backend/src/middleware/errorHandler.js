@@ -1,4 +1,5 @@
 import multer from 'multer'
+import { errorFields, logger } from '../utils/logger.js'
 
 // Turns library errors into messages a user can act on
 const normalize = (err) => {
@@ -23,7 +24,7 @@ const errorHandler = (err, req, res, next) => {
   const isProduction = process.env.NODE_ENV === 'production'
 
   if (statusCode >= 500) {
-    console.error('Server Error:', err)
+    logger.error('unhandled error', { requestId: req.id, method: req.method, path: req.originalUrl.split('?')[0], ...errorFields(err) })
   }
 
   res.status(statusCode).json({
@@ -33,6 +34,8 @@ const errorHandler = (err, req, res, next) => {
         ? 'Internal Server Error'
         : error.message || 'Something went wrong',
     ...(err.errors?.length && { errors: err.errors }),
+    // Lets support find the matching log line
+    ...(statusCode >= 500 && { requestId: req.id }),
     ...( !isProduction && { stack: err.stack }),
   })
 }

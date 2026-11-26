@@ -19,10 +19,9 @@ export const SAUDI_CITIES = [
   'Buraidah',
 ] as const;
 
-/** Proposed upload limits - confirm before launch */
+/** Photo file rules (the server allows up to 8 MB); how many photos an ad may have is set by admins in Settings */
 export const LISTING_PHOTO_LIMITS = {
-  maxCount: 10,
-  maxSizeBytes: 5 * 1024 * 1024,
+  maxSizeBytes: 8 * 1024 * 1024,
   acceptedTypes: ['image/jpeg', 'image/png', 'image/webp'],
 } as const;
 
@@ -30,9 +29,3 @@ export const LISTING_PHOTO_LIMITS = {
 export const DEFAULT_PAGE_SIZE = 12;
 
 
-/** Support contact details shown on the Contact page - proposed, confirm before launch */
-export const SUPPORT_CONTACT = {
-  email: 'support@finovosouq.com',
-  hours: 'Sunday to Thursday, 9:00 to 18:00 (Riyadh time)',
-  city: 'Riyadh, Saudi Arabia',
-} as const;

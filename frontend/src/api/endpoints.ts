@@ -3,6 +3,13 @@
  */
 
 export const endpoints = {
+  site: {
+    settings: '/settings',
+    page: (slug: string) => `/pages/${slug}`,
+  },
+  sellers: {
+    profile: (id: string) => `/sellers/${id}`,
+  },
   auth: {
     register: '/auth/register',
     login: '/auth/login',
@@ -31,6 +38,8 @@ export const endpoints = {
     byId: (id: string) => `/listings/${id}`,
     submit: (id: string) => `/listings/${id}/submit`,
     withdraw: (id: string) => `/listings/${id}/withdraw`,
+    renew: (id: string) => `/listings/${id}/renew`,
+    similar: (id: string) => `/listings/${id}/similar`,
     availability: (id: string) => `/listings/${id}/availability`,
     photos: (id: string) => `/listings/${id}/photos`,
     photo: (id: string, photoId: string) => `/listings/${id}/photos/${photoId}`,
@@ -66,6 +75,14 @@ export const endpoints = {
     users: '/admin/users',
     userStatus: (id: string) => `/admin/users/${id}/status`,
     approveUser: (id: string) => `/admin/users/${id}/approve`,
+    history: '/admin/history',
+    promotions: '/admin/promotions',
+    feature: (id: string) => `/admin/listings/${id}/feature`,
+    categories: '/admin/categories',
+    category: (id: string) => `/admin/categories/${id}`,
+    categoryOrder: '/admin/categories/reorder',
+    settings: '/admin/settings',
+    settingsPage: (slug: string) => `/admin/settings/pages/${slug}`,
     reports: '/admin/reports',
     reportStatus: (id: string) => `/admin/reports/${id}/status`,
   },

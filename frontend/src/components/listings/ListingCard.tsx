@@ -1,13 +1,14 @@
-import { CalendarDays, Gauge, BedDouble, MapPin, Ruler } from 'lucide-react';
+import { BedDouble, CalendarDays, Gauge, MapPin, Ruler, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Listing } from '../../types';
 import { formatNumber, formatPrice, formatRelative, LISTING_TYPE_LABELS } from '../../utils/format';
 import { ListingImage } from './ListingImage';
 import { SaveButton } from './SaveButton';
 
+/** Two quick facts chosen from the details the ad has, so it works for every category */
 function KeyFacts({ listing }: { listing: Listing }) {
   const a = listing.attributes;
-  if (listing.categorySlug === 'cars') {
+  if (a.year !== undefined && a.mileage !== undefined) {
     return (
       <>
         <span><CalendarDays size={14} />{a.year}</span>
@@ -15,7 +16,7 @@ function KeyFacts({ listing }: { listing: Listing }) {
       </>
     );
   }
-  if (listing.categorySlug === 'property') {
+  if (a.area !== undefined) {
     return (
       <>
         {Number(a.bedrooms) > 0 && <span><BedDouble size={14} />{a.bedrooms} {Number(a.bedrooms) === 1 ? 'bed' : 'beds'}</span>}
@@ -23,8 +24,8 @@ function KeyFacts({ listing }: { listing: Listing }) {
       </>
     );
   }
-  const detail = a.condition ?? a.serviceCategory ?? a.itemType;
-  return detail ? <span>{detail}</span> : null;
+  const details = [a.brand ?? a.make ?? a.partType ?? a.propertyType, a.condition].filter(Boolean);
+  return details.length ? <span>{details.join(' · ')}</span> : <span>{listing.categoryName}</span>;
 }
 
 export function ListingCard({ listing, showSave = true }: { listing: Listing; showSave?: boolean }) {
@@ -33,7 +34,14 @@ export function ListingCard({ listing, showSave = true }: { listing: Listing; sh
       <Link to={`/listings/${listing.id}`} className="listing-card__link" aria-label={listing.title} />
       <div className="listing-card__media">
         <ListingImage listing={listing} />
-        <span className="listing-card__type">{LISTING_TYPE_LABELS[listing.listingType]}</span>
+        <span className="listing-card__badges">
+          {listing.featuredUntil && (
+            <span className="listing-card__featured">
+              <Sparkles size={12} /> Featured
+            </span>
+          )}
+          <span className="listing-card__type">{LISTING_TYPE_LABELS[listing.listingType]}</span>
+        </span>
         {showSave && <SaveButton listingId={listing.id} className="listing-card__save" />}
       </div>
       <div className="listing-card__body">

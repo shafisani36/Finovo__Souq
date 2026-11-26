@@ -23,6 +23,10 @@ export const savedService = {
     return apiClient.post<SavedSearch>(endpoints.users.savedSearches, { label, criteria });
   },
 
+  setSearchAlerts(id: string, alertsEnabled: boolean): Promise<SavedSearch> {
+    return apiClient.patch<SavedSearch>(endpoints.users.savedSearch(id), { alertsEnabled });
+  },
+
   removeSearch(id: string): Promise<void> {
     return apiClient.delete<void>(endpoints.users.savedSearch(id));
   },

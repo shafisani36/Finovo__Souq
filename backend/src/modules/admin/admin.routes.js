@@ -1,7 +1,9 @@
 import { Router } from 'express'
 import authenticate from '../../middleware/authenticate.js'
 import authorize from '../../middleware/authorize.js'
-import { findCategory } from '../../config/catalog.js'
+import { findCategory } from '../categories/category.tree.js'
+import { adminCategoryRouter } from '../categories/categories.routes.js'
+import { adminSettingsRouter } from '../settings/settings.routes.js'
 import asyncHandler from '../../utils/asyncHandler.js'
 import ApiResponse from '../../utils/ApiResponse.js'
 import ApiError from '../../utils/ApiError.js'
@@ -12,9 +14,12 @@ import { sendMail } from '../../services/mail.service.js'
 import { revokeAllUserSessions } from '../../services/session.service.js'
 import { disconnectUser } from '../../realtime/socket.js'
 import User from '../users/user.model.js'
-import Listing from '../listings/listing.model.js'
+import Listing, { PUBLIC_FILTER } from '../listings/listing.model.js'
 import { toListingView, toListingViews } from '../listings/listing.view.js'
 import Report, { REPORT_STATUSES, toReportView } from '../reports/report.model.js'
+import ModerationLog from './moderationLog.model.js'
+import { alertPriceDrop, alertSavedSearches, runInBackground } from '../alerts/alerts.service.js'
+import { expiryDate } from '../listings/listing.expiry.js'
 
 const router = Router()
 router.use(authenticate, authorize('admin'))
@@ -25,6 +30,8 @@ const requireReason = (body) => {
   return reason
 }
 
+const logAction = (req, entry) => ModerationLog.create({ admin: req.user.id, ...entry })
+
 const findPending = async (id) => {
   const listing = await Listing.findById(id)
   if (!listing) throw ApiError.notFound('This ad could not be found')
@@ -32,12 +39,15 @@ const findPending = async (id) => {
   return listing
 }
 
+router.use('/categories', adminCategoryRouter)
+router.use('/settings', adminSettingsRouter)
+
 /* ---------- Moderation ---------- */
 router.get('/moderation/listings', asyncHandler(async (req, res) => {
   const status = toText(req.query.status) || 'pending_review'
   const filter = status === 'all' ? {} : { status }
-  const category = findCategory(toText(req.query.category))
-  if (category) filter.categoryId = category.id
+  const category = await findCategory(toText(req.query.category))
+  if (category) filter.categoryPath = category.id
 
   const q = toText(req.query.q).slice(0, 100)
   if (q) {
@@ -56,9 +66,22 @@ router.get('/moderation/listings', asyncHandler(async (req, res) => {
 
 router.post('/listings/:id/approve', asyncHandler(async (req, res) => {
   const listing = await findPending(req.params.id)
-  listing.set({ status: 'published', moderationNote: null, publishedAt: listing.publishedAt ?? new Date() })
+  const isFirstApproval = !listing.publishedAt
+  const previousPrice = listing.publishedPrice
+  listing.set({
+    status: 'published',
+    moderationNote: null,
+    publishedAt: listing.publishedAt ?? new Date(),
+    // An edited ad keeps its remaining time; a new one gets the full period
+    expiresAt: listing.expiresAt && listing.expiresAt > new Date() ? listing.expiresAt : await expiryDate(),
+    expiryReminderSentAt: null,
+    publishedPrice: listing.price,
+  })
   await listing.save()
+  await logAction(req, { action: 'listing_approved', listing: listing._id, previousStatus: 'pending_review', newStatus: 'published' })
   await notify(listing.seller, { type: 'listing_approved', title: 'Ad approved', body: `Your ad "${listing.title}" is now live.`, link: `/listings/${listing.id}` })
+  const approved = listing.toObject()
+  runInBackground(() => (isFirstApproval ? alertSavedSearches(approved) : alertPriceDrop(approved, previousPrice)), 'Ad alerts')
   res.json(new ApiResponse(200, await toListingView(listing), 'Ad approved'))
 }))
 
@@ -69,6 +92,13 @@ router.post('/listings/:id/reject', asyncHandler(async (req, res) => {
   const askChanges = req.body.mode === 'changes'
   listing.set({ status: askChanges ? 'changes_required' : 'rejected', moderationNote: reason })
   await listing.save()
+  await logAction(req, {
+    action: askChanges ? 'listing_changes_requested' : 'listing_rejected',
+    listing: listing._id,
+    reason,
+    previousStatus: 'pending_review',
+    newStatus: listing.status,
+  })
   await notify(listing.seller, {
     type: askChanges ? 'changes_required' : 'listing_rejected',
     title: askChanges ? 'Changes required' : 'Ad rejected',
@@ -82,10 +112,49 @@ router.post('/listings/:id/hide', asyncHandler(async (req, res) => {
   const reason = requireReason(req.body)
   const listing = await Listing.findById(req.params.id)
   if (!listing) throw ApiError.notFound('This ad could not be found')
+  if (listing.status === 'hidden') throw new ApiError(409, 'This ad is already hidden')
+  const previousStatus = listing.status
   listing.set({ status: 'hidden', moderationNote: reason })
   await listing.save()
+  await logAction(req, { action: 'listing_hidden', listing: listing._id, reason, previousStatus, newStatus: 'hidden' })
   await notify(listing.seller, { type: 'listing_rejected', title: 'Ad hidden', body: `"${listing.title}": ${reason}`, link: '/account/listings' })
   res.json(new ApiResponse(200, await toListingView(listing), 'Ad hidden'))
+}))
+
+/* ---------- Promotions ---------- */
+const FEATURE_DAYS = [3, 7, 14, 30]
+const DAY_MS = 24 * 60 * 60 * 1000
+
+router.get('/promotions', asyncHandler(async (req, res) => {
+  const docs = await Listing.find({ ...PUBLIC_FILTER, featuredUntil: { $gt: new Date() } }).sort({ featuredUntil: 1 }).limit(100)
+  res.json(new ApiResponse(200, await toListingViews(docs)))
+}))
+
+// Free promotion by the team; paid featured ads come later with a payment gateway
+router.post('/listings/:id/feature', asyncHandler(async (req, res) => {
+  const days = Number(req.body.days)
+  if (!FEATURE_DAYS.includes(days)) throw ApiError.validation({ days: `Choose ${FEATURE_DAYS.join(', ')} days` })
+  const listing = await Listing.findOne({ _id: req.params.id, ...PUBLIC_FILTER })
+  if (!listing) throw new ApiError(409, 'Only live, available ads can be featured')
+
+  // Extending a running promotion adds to it instead of restarting it
+  const from = listing.featuredUntil && listing.featuredUntil > new Date() ? listing.featuredUntil : new Date()
+  listing.featuredUntil = new Date(from.getTime() + days * DAY_MS)
+  await listing.save()
+  await logAction(req, { action: 'listing_featured', listing: listing._id, reason: `${days} days`, previousStatus: 'published', newStatus: 'published' })
+  await notify(listing.seller, { type: 'listing_featured', title: 'Your ad is featured', body: `"${listing.title}" is shown at the top of search for ${days} days.`, link: `/listings/${listing.id}` })
+  res.json(new ApiResponse(200, await toListingView(listing), 'Ad featured'))
+}))
+
+router.delete('/listings/:id/feature', asyncHandler(async (req, res) => {
+  const listing = await Listing.findOneAndUpdate(
+    { _id: req.params.id, featuredUntil: { $gt: new Date() } },
+    { featuredUntil: null },
+    { returnDocument: 'after' }
+  )
+  if (!listing) throw new ApiError(409, 'This ad is not featured')
+  await logAction(req, { action: 'listing_unfeatured', listing: listing._id, previousStatus: listing.status, newStatus: listing.status })
+  res.json(new ApiResponse(200, await toListingView(listing), 'Promotion stopped'))
 }))
 
 /* ---------- Users ---------- */
@@ -114,6 +183,7 @@ router.post('/users/:id/approve', asyncHandler(async (req, res) => {
     { returnDocument: 'after' }
   )
   if (!user) throw new ApiError(409, 'Only accounts waiting for approval can be approved')
+  await logAction(req, { action: 'seller_approved', user: user._id, previousStatus: 'pending', newStatus: 'active' })
 
   // The seller cannot sign in yet, so email is the only way to tell them
   const loginUrl = `${env.CLIENT_URL}/login`
@@ -136,21 +206,39 @@ router.post('/users/:id/approve', asyncHandler(async (req, res) => {
 
 router.patch('/users/:id/status', asyncHandler(async (req, res) => {
   const { status } = req.body
+  const reason = toText(req.body.reason).slice(0, 500)
   if (!['active', 'suspended'].includes(status)) throw ApiError.validation({ status: 'Choose a valid status' })
-  if (toText(req.body.reason).length < 5) throw ApiError.validation({ reason: 'Add a short reason' })
+  if (reason.length < 5) throw ApiError.validation({ reason: 'Add a short reason' })
 
   const user = await User.findById(req.params.id)
   if (!user) throw ApiError.notFound('User not found')
   if (user.role === 'admin') throw new ApiError(409, 'Admin accounts cannot be suspended here')
+  if (user.status === status) throw new ApiError(409, `This account is already ${status}`)
 
+  const previousStatus = user.status
   user.status = status
   await user.save()
+  await logAction(req, { action: status === 'suspended' ? 'user_suspended' : 'user_reactivated', user: user._id, reason, previousStatus, newStatus: status })
   // A suspended account is signed out everywhere at once
   if (status === 'suspended') {
     await revokeAllUserSessions(user._id)
     disconnectUser(user.id)
   }
   res.json(new ApiResponse(200, user, status === 'suspended' ? 'User suspended' : 'User reactivated'))
+}))
+
+/* ---------- Moderation history ---------- */
+router.get('/history', asyncHandler(async (req, res) => {
+  const filter = {}
+  if (req.query.type === 'listings') filter.listing = { $ne: null }
+  if (req.query.type === 'users') filter.user = { $ne: null }
+  const pagination = getPagination(req.query, 20)
+  const [entries, total] = await Promise.all([
+    ModerationLog.find(filter).sort({ createdAt: -1 }).skip(pagination.skip).limit(pagination.pageSize)
+      .populate('admin', 'name').populate('listing', 'title').populate('user', 'name email'),
+    ModerationLog.countDocuments(filter),
+  ])
+  res.json(new ApiResponse(200, paginated(entries, total, pagination)))
 }))
 
 /* ---------- Reports ---------- */

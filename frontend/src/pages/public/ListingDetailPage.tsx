@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { BadgeCheck, CalendarDays, ChevronRight, Eye, Flag, Info, MapPin, MessageSquare, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getErrorMessage } from '../../api/errors';
 import { ListingImage } from '../../components/listings/ListingImage';
+import { SimilarAds } from '../../components/listings/SimilarAds';
 import { SaveButton } from '../../components/listings/SaveButton';
 import { Avatar } from '../../components/ui/Avatar';
 import { ListingStatusBadge } from '../../components/ui/Badge';
@@ -135,8 +136,12 @@ export function ListingDetailPage() {
       <nav className="breadcrumb" aria-label="Breadcrumb">
         <Link to="/">Home</Link>
         <ChevronRight size={14} aria-hidden="true" />
-        <Link to={`/search?category=${ad.categorySlug}`}>{ad.categoryName}</Link>
-        <ChevronRight size={14} aria-hidden="true" />
+        {ad.categoryTrail.map((c) => (
+          <Fragment key={c.id}>
+            <Link to={`/search?category=${c.slug}`}>{c.name}</Link>
+            <ChevronRight size={14} aria-hidden="true" />
+          </Fragment>
+        ))}
         <span aria-current="page">{ad.title}</span>
       </nav>
 
@@ -227,7 +232,9 @@ export function ListingDetailPage() {
             <div className="seller-card">
               <Avatar name={ad.seller.name} src={ad.seller.avatarUrl} size="lg" />
               <div>
-                <strong className="seller-card__name">{ad.seller.name}</strong>
+                <Link to={`/sellers/${ad.seller.id}`} className="seller-card__name">
+                  {ad.seller.name}
+                </Link>
                 <p className="text-muted">Member since {formatDate(ad.seller.memberSince)}</p>
                 {ad.seller.phoneVerified && (
                   <span className="badge badge--success" style={{ marginTop: 6 }}>
@@ -239,6 +246,9 @@ export function ListingDetailPage() {
             <p className="text-muted" style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)' }}>
               {formatNumber(ad.seller.activeListings)} live {ad.seller.activeListings === 1 ? 'ad' : 'ads'}. A verified phone number confirms the seller can receive codes; it is not an identity check.
             </p>
+            <ButtonLink to={`/sellers/${ad.seller.id}`} block className="seller-card__all">
+              View all ads from this seller
+            </ButtonLink>
           </div>
 
           <div className="card safety-card">
@@ -250,6 +260,9 @@ export function ListingDetailPage() {
               <li>Check the item and documents before paying.</li>
               <li>Never send a deposit or pay before viewing.</li>
             </ul>
+            <Link to="/safety" className="link safety-card__more">
+              Read all safety tips
+            </Link>
             {canReport && (
               <Button variant="ghost" size="sm" icon={<Flag size={15} />} onClick={() => setReportOpen(true)}>
                 Report this ad
@@ -263,6 +276,8 @@ export function ListingDetailPage() {
           </div>
         </aside>
       </div>
+
+      {ad.status === 'published' && <SimilarAds listingId={ad.id} />}
 
       <Modal
         open={reportOpen}

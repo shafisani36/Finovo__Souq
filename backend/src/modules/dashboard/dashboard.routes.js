@@ -2,7 +2,7 @@ import { Router } from 'express'
 import mongoose from 'mongoose'
 import authenticate from '../../middleware/authenticate.js'
 import authorize from '../../middleware/authorize.js'
-import { CATEGORIES } from '../../config/catalog.js'
+import { getCategoryTree } from '../categories/category.tree.js'
 import asyncHandler from '../../utils/asyncHandler.js'
 import ApiResponse from '../../utils/ApiResponse.js'
 import User from '../users/user.model.js'
@@ -60,7 +60,8 @@ router.get('/admin/dashboard', authenticate, authorize('admin'), asyncHandler(as
   const [submitted, approved, perCategory, perWeekday, decided, approvedTotal, pendingQueue, recentReports] = await Promise.all([
     countPerDay(Listing, { createdAt: { $gte: since } }, 'createdAt'),
     countPerDay(Listing, { publishedAt: { $gte: since } }, 'publishedAt'),
-    Listing.aggregate([{ $match: PUBLIC_FILTER }, { $group: { _id: '$categoryId', count: { $sum: 1 } } }]),
+    // The first entry of categoryPath is the top-level category
+    Listing.aggregate([{ $match: PUBLIC_FILTER }, { $group: { _id: { $arrayElemAt: ['$categoryPath', 0] }, count: { $sum: 1 } } }]),
     Listing.aggregate([{ $match: { createdAt: { $gte: since } } }, { $group: { _id: { $dayOfWeek: '$createdAt' }, count: { $sum: 1 } } }]),
     Listing.countDocuments({ status: { $in: DECIDED } }),
     Listing.countDocuments({ status: 'published' }),
@@ -80,7 +81,7 @@ router.get('/admin/dashboard', authenticate, authorize('admin'), asyncHandler(as
     ],
     listingsTrend: dates.map((date) => ({ date, value: submitted.get(date) ?? 0 })),
     approvalsTrend: dates.map((date) => ({ date, value: approved.get(date) ?? 0 })),
-    categoryBreakdown: CATEGORIES.map((c) => ({ slug: c.slug, name: c.name, count: categoryCount.get(c.id) ?? 0 })),
+    categoryBreakdown: (await getCategoryTree()).roots.map((c) => ({ slug: c.slug, name: c.name, count: categoryCount.get(c.id) ?? 0 })),
     activityByWeekday: WEEKDAYS.map((day, i) => ({ day, value: weekdayCount.get(i + 1) ?? 0 })),
     approvalRate: decided ? Math.round((approvedTotal / decided) * 100) : 0,
     pendingQueue: await toListingViews(pendingQueue),

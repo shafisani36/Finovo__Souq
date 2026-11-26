@@ -1,0 +1,13 @@
+# Caddy gets and renews the HTTPS certificate for DOMAIN automatically
+{$DOMAIN} {
+  encode zstd gzip
+  header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  reverse_proxy frontend:80 {
+    header_up X-Forwarded-Proto https
+  }
+}
+
+# Send www to the main address
+www.{$DOMAIN} {
+  redir https://{$DOMAIN}{uri} permanent
+}

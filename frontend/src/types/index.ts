@@ -35,7 +35,11 @@ export interface RegisterPayload {
 }
 
 /* ---------- Categories ---------- */
-export type CategoryIconKey = 'car' | 'property' | 'electronics' | 'furniture' | 'services';
+export const CATEGORY_ICON_KEYS = [
+  'car', 'motorcycle', 'parts', 'property', 'land', 'store', 'electronics', 'phone', 'laptop', 'tv', 'camera',
+  'gaming', 'furniture', 'sofa', 'bed', 'kitchen', 'decor', 'services', 'cleaning', 'truck', 'tools', 'education', 'tag',
+] as const;
+export type CategoryIconKey = (typeof CATEGORY_ICON_KEYS)[number];
 
 export interface CategoryField {
   fieldKey: string;
@@ -45,16 +49,62 @@ export interface CategoryField {
   filterable: boolean;
   options?: string[];
   unit?: string;
+  min?: number;
+  max?: number;
 }
 
+/** One node of the category tree, as the public API returns it (fields and types already inherited) */
 export interface Category {
   id: string;
   name: string;
   slug: string;
+  parentId: string | null;
+  depth: number;
+  /** Ids from the top-level category down to this one */
+  path: string[];
   icon: CategoryIconKey;
   description: string;
+  /** Only final categories (without subcategories) can hold ads */
+  isLeaf: boolean;
+  listingTypes: ListingType[];
   fields: CategoryField[];
+  /** Live ads in this category and everything below it */
   listingCount: number;
+}
+
+/** Admin view of a category: own settings separate from what it inherits */
+export interface AdminCategory {
+  id: string;
+  name: string;
+  slug: string;
+  parentId: string | null;
+  depth: number;
+  path: string[];
+  description: string;
+  icon: CategoryIconKey | null;
+  effectiveIcon: CategoryIconKey;
+  listingTypes: ListingType[];
+  effectiveListingTypes: ListingType[];
+  fields: CategoryField[];
+  inheritedFields: CategoryField[];
+  isActive: boolean;
+  /** False when this category or one above it is hidden */
+  isVisible: boolean;
+  isLeaf: boolean;
+  childCount: number;
+  directListings: number;
+  liveListings: number;
+}
+
+export interface CategoryPayload {
+  name?: string;
+  slug?: string;
+  parentId?: string | null;
+  description?: string;
+  icon?: CategoryIconKey | null;
+  listingTypes?: ListingType[];
+  fields?: CategoryField[];
+  isActive?: boolean;
 }
 
 /* ---------- Listings ---------- */
@@ -65,7 +115,8 @@ export type ListingStatus =
   | 'changes_required'
   | 'rejected'
   | 'hidden'
-  | 'withdrawn';
+  | 'withdrawn'
+  | 'expired';
 
 export type ListingAvailability = 'available' | 'sold' | 'rented';
 export type ListingType = 'sale' | 'rent' | 'service';
@@ -93,6 +144,9 @@ export interface Listing {
   categoryId: string;
   categorySlug: string;
   categoryName: string;
+  categoryIcon: CategoryIconKey;
+  /** Breadcrumb from the top-level category down to the ad's category */
+  categoryTrail: { id: string; name: string; slug: string }[];
   listingType: ListingType;
   title: string;
   description: string;
@@ -109,6 +163,10 @@ export interface Listing {
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
+  /** A live ad goes offline at this time unless the seller renews it */
+  expiresAt: string | null;
+  /** Set while an admin promotion is running: shown first in search with a "Featured" label */
+  featuredUntil: string | null;
 }
 
 export interface ListingDraftPayload {
@@ -122,10 +180,17 @@ export interface ListingDraftPayload {
   attributes: Record<string, string | number>;
 }
 
-export type ListingSort = 'newest' | 'price_asc' | 'price_desc';
+/** newest = featured first, then newest; latest = newest only */
+export type ListingSort = 'newest' | 'latest' | 'price_asc' | 'price_desc';
 
 export interface ListingSearchParams {
   q?: string;
+  /** Only this seller's live ads (seller profile page) */
+  seller?: string;
+  /** Only ads with a running promotion */
+  featured?: 'true';
+  /** Category detail filters: f_<key> for lists, f_<key>_min / f_<key>_max for numbers */
+  [filterKey: `f_${string}`]: string | undefined;
   city?: string;
   category?: string;
   minPrice?: number;
@@ -152,7 +217,7 @@ export interface Conversation {
   listingTitle: string;
   listingPrice: number;
   listingPhotoUrl: string | null;
-  listingCategorySlug: string;
+  listingCategoryIcon: CategoryIconKey;
   listingAvailable: boolean;
   counterpart: { id: string; name: string; avatarUrl: string | null };
   lastMessage: string;
@@ -198,6 +263,8 @@ export interface SavedSearch {
   id: string;
   label: string;
   criteria: ListingSearchParams;
+  /** Notify me when a newly approved ad matches */
+  alertsEnabled: boolean;
   createdAt: string;
 }
 
@@ -207,7 +274,12 @@ export type NotificationType =
   | 'listing_rejected'
   | 'new_message'
   | 'report_update'
-  | 'system';
+  | 'system'
+  | 'saved_search_match'
+  | 'price_drop'
+  | 'listing_expiring'
+  | 'listing_expired'
+  | 'listing_featured';
 
 export interface AppNotification {
   id: string;
@@ -244,8 +316,6 @@ export interface ListingReport {
   status: ReportStatus;
   createdAt: string;
 }
-
-export type ModerationAction = 'approve' | 'request_changes' | 'reject' | 'hide';
 
 /* ---------- Dashboards ---------- */
 export interface KpiMetric {
@@ -304,4 +374,63 @@ export interface UserDashboard {
   actionRequired: Listing[];
   recentConversations: Conversation[];
   savedListings: Listing[];
+}
+
+export type ModerationAction =
+  | 'listing_approved'
+  | 'listing_changes_requested'
+  | 'listing_rejected'
+  | 'listing_hidden'
+  | 'seller_approved'
+  | 'user_suspended'
+  | 'user_reactivated'
+  | 'listing_featured'
+  | 'listing_unfeatured';
+
+export interface ModerationLogEntry {
+  id: string;
+  action: ModerationAction;
+  admin: { id: string; name: string } | null;
+  listing: { id: string; title: string } | null;
+  user: { id: string; name: string; email: string } | null;
+  reason: string | null;
+  previousStatus: string;
+  newStatus: string;
+  createdAt: string;
+}
+
+/* ---------- Site settings ---------- */
+export type LegalPageSlug = 'help' | 'safety' | 'terms' | 'privacy';
+export type SocialNetwork = 'x' | 'instagram' | 'facebook' | 'tiktok' | 'youtube';
+
+export interface SiteContact {
+  email: string;
+  phone: string;
+  hours: string;
+  city: string;
+}
+
+/** What every visitor gets; an admin changes these without a deploy */
+export interface SiteSettings {
+  contact: SiteContact;
+  social: Record<SocialNetwork, string>;
+  announcement: { text: string; tone: 'info' | 'warning'; link: string | null } | null;
+  listings: { maxPhotos: number; expiryDays: number };
+}
+
+export interface LegalPage {
+  slug: LegalPageSlug;
+  title: string;
+  /** Light formatting: "## " headings, "- " list items and **bold** */
+  body: string;
+  updatedAt: string;
+}
+
+export interface AdminSettings {
+  contact: SiteContact;
+  social: Record<SocialNetwork, string>;
+  announcement: { enabled: boolean; text: string; tone: 'info' | 'warning'; link: string };
+  listings: { maxPhotos: number; expiryDays: number };
+  pages: Record<LegalPageSlug, Omit<LegalPage, 'slug'>>;
+  updatedAt: string;
 }

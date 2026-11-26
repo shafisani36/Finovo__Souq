@@ -165,7 +165,17 @@ export function RegisterPage() {
                 setErrors((x) => ({ ...x, terms: undefined }));
               }}
             />
-            I agree to the terms of use and the privacy policy.
+            <span>
+              I agree to the{' '}
+              <Link to="/terms" className="link" target="_blank" rel="noopener">
+                terms of use
+              </Link>{' '}
+              and the{' '}
+              <Link to="/privacy" className="link" target="_blank" rel="noopener">
+                privacy policy
+              </Link>
+              .
+            </span>
           </label>
           {errors.terms && <span className="field__error">{errors.terms}</span>}
         </div>

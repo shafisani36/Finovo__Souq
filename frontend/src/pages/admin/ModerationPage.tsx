@@ -81,7 +81,7 @@ function ReviewPanel({ listing, onDone }: { listing: Listing; onDone: (updated: 
       <div className="review__head">
         <ListingStatusBadge status={listing.status} availability={listing.availability} />
         <span className="text-muted">
-          {listing.categoryName} - {LISTING_TYPE_LABELS[listing.listingType]}
+          {listing.categoryTrail.map((c) => c.name).join(' › ')} - {LISTING_TYPE_LABELS[listing.listingType]}
         </span>
       </div>
       <p className="detail__price tabular">{formatPrice(listing.price, listing.listingType)}</p>

@@ -1,5 +1,5 @@
-import { useMemo, useState, type FormEvent } from 'react';
-import { BookmarkPlus, ChevronRight, LayoutGrid, MapPin, SearchX, SlidersHorizontal, Wallet, X } from 'lucide-react';
+import { Fragment, useMemo, useState, type FormEvent } from 'react';
+import { ArrowLeft, BookmarkPlus, ChevronRight, LayoutGrid, ListFilter, MapPin, SearchX, SlidersHorizontal, Wallet, X } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getErrorMessage } from '../../api/errors';
 import { CategoryIcon } from '../../components/listings/CategoryIcon';
@@ -21,7 +21,8 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { categoriesService } from '../../services/categories.service';
 import { listingsService } from '../../services/listings.service';
 import { savedService } from '../../services/saved.service';
-import type { ListingSearchParams, ListingSort } from '../../types';
+import type { Category, CategoryField, ListingSearchParams, ListingSort } from '../../types';
+import { childrenOf, filterKeysOf, trailOf } from '../../utils/categories';
 import { formatNumber, formatPrice } from '../../utils/format';
 
 const SORT_OPTIONS: { value: ListingSort; label: string }[] = [
@@ -46,6 +47,8 @@ function readParams(sp: URLSearchParams): ListingSearchParams {
     maxPrice: toNumber(sp.get('maxPrice')),
     sort: SORT_OPTIONS.some((o) => o.value === sort) ? (sort as ListingSort) : 'newest',
     page: Math.max(1, toNumber(sp.get('page')) ?? 1),
+    // Category detail filters; the API ignores any that the category does not offer
+    ...Object.fromEntries([...sp.entries()].filter(([key, value]) => key.startsWith('f_') && value)),
   };
 }
 
@@ -53,6 +56,15 @@ interface FilterValues {
   city: string;
   minPrice: string;
   maxPrice: string;
+  /** f_<key> values for the active category's filters */
+  details: Record<string, string>;
+}
+
+/** Filter label for an applied detail filter, such as "Year from 2018" or "Toyota" */
+function detailPillLabel(field: CategoryField, key: string, value: string): string {
+  if (key.endsWith('_min')) return `${field.label} from ${formatNumber(Number(value))}${field.unit ? ` ${field.unit}` : ''}`;
+  if (key.endsWith('_max')) return `${field.label} up to ${formatNumber(Number(value))}${field.unit ? ` ${field.unit}` : ''}`;
+  return value;
 }
 
 const PRICE_PRESETS: { label: string; min: string; max: string }[] = [
@@ -64,6 +76,8 @@ const PRICE_PRESETS: { label: string; min: string; max: string }[] = [
 
 interface FilterPanelProps {
   initial: FilterValues;
+  /** Filterable details of the active category */
+  fields: CategoryField[];
   hasFilters: boolean;
   onApply: (values: FilterValues) => void;
   onClear: () => void;
@@ -71,7 +85,7 @@ interface FilterPanelProps {
 }
 
 /** Filter values are drafts until the form is submitted */
-function FilterPanel({ initial, hasFilters, onApply, onClear, onClose }: FilterPanelProps) {
+function FilterPanel({ initial, fields, hasFilters, onApply, onClear, onClose }: FilterPanelProps) {
   const [draft, setDraft] = useState(initial);
   const [priceError, setPriceError] = useState('');
 
@@ -86,6 +100,8 @@ function FilterPanel({ initial, hasFilters, onApply, onClear, onClose }: FilterP
     setPriceError('');
     onApply(draft);
   };
+
+  const setDetail = (key: string, value: string) => setDraft({ ...draft, details: { ...draft.details, [key]: value } });
 
   return (
     <form className="filters" onSubmit={submit} aria-label="Filters">
@@ -171,6 +187,51 @@ function FilterPanel({ initial, hasFilters, onApply, onClear, onClose }: FilterP
         {priceError && <span className="field__error">{priceError}</span>}
       </fieldset>
 
+      {fields.map((field) =>
+        field.inputType === 'select' ? (
+          <div key={field.fieldKey} className="filters__group">
+            <p className="filters__label">
+              <ListFilter size={15} aria-hidden="true" /> {field.label}
+            </p>
+            <Select
+              value={draft.details[`f_${field.fieldKey}`] ?? ''}
+              onChange={(value) => setDetail(`f_${field.fieldKey}`, value)}
+              placeholder={`Any ${field.label.toLowerCase()}`}
+              options={[{ value: '', label: `Any ${field.label.toLowerCase()}` }, ...(field.options ?? []).map((o) => ({ value: o, label: o }))]}
+              aria-label={field.label}
+            />
+          </div>
+        ) : (
+          <fieldset key={field.fieldKey} className="filters__group">
+            <legend className="filters__label">
+              <ListFilter size={15} aria-hidden="true" /> {field.label}
+              {field.unit ? ` (${field.unit})` : ''}
+            </legend>
+            <div className="filters__price-row">
+              <InputField
+                type="number"
+                inputMode="numeric"
+                min={field.min ?? 0}
+                placeholder="Min"
+                aria-label={`Minimum ${field.label.toLowerCase()}`}
+                value={draft.details[`f_${field.fieldKey}_min`] ?? ''}
+                onChange={(e) => setDetail(`f_${field.fieldKey}_min`, e.target.value)}
+              />
+              <span className="filters__dash" aria-hidden="true" />
+              <InputField
+                type="number"
+                inputMode="numeric"
+                min={field.min ?? 0}
+                placeholder="Max"
+                aria-label={`Maximum ${field.label.toLowerCase()}`}
+                value={draft.details[`f_${field.fieldKey}_max`] ?? ''}
+                onChange={(e) => setDetail(`f_${field.fieldKey}_max`, e.target.value)}
+              />
+            </div>
+          </fieldset>
+        ),
+      )}
+
       <Button type="submit" variant="primary" block>
         Apply filters
       </Button>
@@ -184,7 +245,15 @@ export function BrowsePage() {
   const { user } = useAuth();
   const toast = useToast();
   const categories = useAsync(() => categoriesService.list(), []);
-  const activeCategory = categories.data?.find((c) => c.slug === params.category);
+  const allCategories = categories.data ?? [];
+  const activeCategory = allCategories.find((c) => c.slug === params.category);
+  const activeTrail = trailOf(allCategories, activeCategory);
+  const detailFields = activeCategory?.fields.filter((f) => f.filterable) ?? [];
+  const detailKeys = filterKeysOf(activeCategory);
+  const appliedDetails = Object.fromEntries(detailKeys.filter((k) => searchParams.get(k)).map((k) => [k, searchParams.get(k) as string]));
+  // Chips show the next level down; on a final category they show its siblings so the visitor can switch
+  const chipParent: Category | undefined = activeCategory?.isLeaf ? allCategories.find((c) => c.id === activeCategory.parentId) : activeCategory;
+  const chipCategories = childrenOf(allCategories, chipParent?.id ?? null);
   useDocumentTitle(activeCategory ? activeCategory.name : params.q ? `Results for "${params.q}"` : 'All ads');
 
   const results = useAsync(() => listingsService.search({ ...params, pageSize: DEFAULT_PAGE_SIZE }), [searchParams.toString()]);
@@ -209,6 +278,7 @@ export function BrowsePage() {
       city: values.city,
       minPrice: toNumber(values.minPrice)?.toString(),
       maxPrice: toNumber(values.maxPrice)?.toString(),
+      ...Object.fromEntries(detailKeys.map((key) => [key, values.details[key] || undefined])),
     });
     setFiltersOpen(false);
   };
@@ -226,6 +296,10 @@ export function BrowsePage() {
             ? `From ${formatPrice(params.minPrice, 'sale')}`
             : `Up to ${formatPrice(params.maxPrice ?? 0, 'sale')}`,
     },
+    ...Object.entries(appliedDetails).map(([key, value]) => {
+      const field = detailFields.find((f) => key === `f_${f.fieldKey}` || key === `f_${f.fieldKey}_min` || key === `f_${f.fieldKey}_max`);
+      return field && { key, label: detailPillLabel(field, key, value) };
+    }),
   ].filter(Boolean) as { key: string; label: string }[];
 
   const removePill = (key: string) => {
@@ -238,11 +312,13 @@ export function BrowsePage() {
     if (slug) next.set('category', slug);
     else next.delete('category');
     next.delete('page');
+    // Detail filters belong to the previous category
+    [...next.keys()].filter((key) => key.startsWith('f_')).forEach((key) => next.delete(key));
     const query = next.toString();
     return `/search${query ? `?${query}` : ''}`;
   };
 
-  const totalAds = categories.data?.reduce((sum, c) => sum + c.listingCount, 0);
+  const totalAds = categories.data ? childrenOf(allCategories, null).reduce((sum, c) => sum + c.listingCount, 0) : undefined;
   const title = activeCategory?.name ?? (params.q ? `Results for "${params.q}"` : 'All ads');
 
   const clearAll = () => {
@@ -250,7 +326,7 @@ export function BrowsePage() {
     setFiltersOpen(false);
   };
 
-  const hasFilters = Boolean(params.q || params.city || params.category || params.minPrice || params.maxPrice);
+  const hasFilters = Boolean(params.q || params.city || params.category || params.minPrice || params.maxPrice || Object.keys(appliedDetails).length);
   const canSaveSearch = hasPermission(user?.role, 'searches:save');
 
   const openSaveSearch = () => {
@@ -292,8 +368,12 @@ export function BrowsePage() {
             {activeCategory ? (
               <>
                 <Link to={categoryLink()}>Browse ads</Link>
-                <ChevronRight size={14} aria-hidden="true" />
-                <span aria-current="page">{activeCategory.name}</span>
+                {activeTrail.map((c) => (
+                  <Fragment key={c.id}>
+                    <ChevronRight size={14} aria-hidden="true" />
+                    {c.id === activeCategory.id ? <span aria-current="page">{c.name}</span> : <Link to={categoryLink(c.slug)}>{c.name}</Link>}
+                  </Fragment>
+                ))}
               </>
             ) : (
               <span aria-current="page">Browse ads</span>
@@ -331,16 +411,29 @@ export function BrowsePage() {
 
       <nav className="browse-cats" aria-label="Categories">
         <div className="container browse-cats__row">
-          <Link to={categoryLink()} className={`browse-cat${!params.category ? ' is-active' : ''}`} aria-current={!params.category ? 'page' : undefined}>
-            <span className="browse-cat__icon">
-              <LayoutGrid size={18} />
-            </span>
+          {chipParent ? (
+            <Link to={categoryLink(chipParent.parentId ? allCategories.find((c) => c.id === chipParent.parentId)?.slug : undefined)} className="browse-cat">
+              <span className="browse-cat__icon">
+                <ArrowLeft size={18} />
+              </span>
+              <span>
+                <strong>Back</strong>
+                <span>{chipParent.parentId ? allCategories.find((c) => c.id === chipParent.parentId)?.name : 'All ads'}</span>
+              </span>
+            </Link>
+          ) : null}
+          <Link
+            to={categoryLink(chipParent?.slug)}
+            className={`browse-cat${(chipParent ? params.category === chipParent.slug : !params.category) ? ' is-active' : ''}`}
+            aria-current={(chipParent ? params.category === chipParent.slug : !params.category) ? 'page' : undefined}
+          >
+            <span className="browse-cat__icon">{chipParent ? <CategoryIcon icon={chipParent.icon} size={18} /> : <LayoutGrid size={18} />}</span>
             <span>
-              <strong>All ads</strong>
-              {totalAds !== undefined && <span className="tabular">{formatNumber(totalAds)} ads</span>}
+              <strong>{chipParent ? `All in ${chipParent.name}` : 'All ads'}</strong>
+              {chipParent ? <span className="tabular">{formatNumber(chipParent.listingCount)} ads</span> : totalAds !== undefined && <span className="tabular">{formatNumber(totalAds)} ads</span>}
             </span>
           </Link>
-          {categories.data?.map((c) => (
+          {chipCategories.map((c) => (
             <Link key={c.id} to={categoryLink(c.slug)} className={`browse-cat${params.category === c.slug ? ' is-active' : ''}`} aria-current={params.category === c.slug ? 'page' : undefined}>
               <span className="browse-cat__icon">
                 <CategoryIcon icon={c.icon} size={18} />
@@ -359,11 +452,13 @@ export function BrowsePage() {
           <div className={`browse__filters${filtersOpen ? ' browse__filters--open' : ''}`}>
             {/* Remounts when the URL filters change so the form always starts from the applied values */}
             <FilterPanel
-              key={`${params.city ?? ''}|${params.minPrice ?? ''}|${params.maxPrice ?? ''}`}
+              key={`${params.category ?? ''}|${params.city ?? ''}|${params.minPrice ?? ''}|${params.maxPrice ?? ''}|${JSON.stringify(appliedDetails)}`}
+              fields={detailFields}
               initial={{
                 city: params.city ?? '',
                 minPrice: params.minPrice?.toString() ?? '',
                 maxPrice: params.maxPrice?.toString() ?? '',
+                details: appliedDetails,
               }}
               hasFilters={hasFilters}
               onApply={applyFilters}

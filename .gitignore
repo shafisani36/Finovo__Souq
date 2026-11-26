@@ -1,0 +1,3 @@
+# Docker Compose settings and backups stay on the server
+.env
+backups/

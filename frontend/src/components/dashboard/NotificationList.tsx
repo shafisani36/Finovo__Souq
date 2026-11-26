@@ -1,4 +1,4 @@
-import { Bell, CheckCircle2, FileEdit, Flag, MessageSquare, XCircle } from 'lucide-react';
+import { Bell, BellRing, Sparkles, CheckCircle2, FileEdit, Flag, Hourglass, MessageSquare, TimerOff, TrendingDown, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { AppNotification, NotificationType } from '../../types';
 import { formatRelative } from '../../utils/format';
@@ -10,6 +10,11 @@ const ICONS: Record<NotificationType, typeof Bell> = {
   new_message: MessageSquare,
   report_update: Flag,
   system: Bell,
+  saved_search_match: BellRing,
+  price_drop: TrendingDown,
+  listing_expiring: Hourglass,
+  listing_expired: TimerOff,
+  listing_featured: Sparkles,
 };
 
 interface NotificationListProps {

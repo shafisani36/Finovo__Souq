@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { CheckCircle2, CircleDashed, Clock, EyeOff, FileEdit, Undo2, XCircle } from 'lucide-react';
+import { CheckCircle2, CircleDashed, Clock, EyeOff, FileEdit, TimerOff, Undo2, XCircle } from 'lucide-react';
 import type { ListingAvailability, ListingStatus, ReportStatus, UserStatus } from '../../types';
 import { LISTING_STATUS_LABELS } from '../../utils/format';
 
@@ -22,6 +22,7 @@ const STATUS_META: Record<ListingStatus, { tone: BadgeTone; icon: ReactNode }> =
   rejected: { tone: 'danger', icon: <XCircle size={12} /> },
   hidden: { tone: 'danger', icon: <EyeOff size={12} /> },
   withdrawn: { tone: 'neutral', icon: <Undo2 size={12} /> },
+  expired: { tone: 'warning', icon: <TimerOff size={12} /> },
 };
 
 export function ListingStatusBadge({ status, availability }: { status: ListingStatus; availability?: ListingAvailability }) {

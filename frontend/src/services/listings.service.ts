@@ -1,18 +1,14 @@
 import { apiClient } from '../api/client';
 import { endpoints } from '../api/endpoints';
-import type {
-  Listing,
-  ListingAvailability,
-  ListingDraftPayload,
-  ListingReport,
-  ListingSearchParams,
-  Paginated,
-  ReportReason,
-} from '../types';
+import type { Listing, ListingAvailability, ListingDraftPayload, ListingReport, ListingSearchParams, Paginated, ReportReason, SellerSummary } from '../types';
 
 export const listingsService = {
   search(params: ListingSearchParams, signal?: AbortSignal): Promise<Paginated<Listing>> {
     return apiClient.get<Paginated<Listing>>(endpoints.listings.search, { params: { ...params }, signal, skipAuth: true });
+  },
+
+  sellerProfile(sellerId: string): Promise<SellerSummary> {
+    return apiClient.get<SellerSummary>(endpoints.sellers.profile(sellerId), { skipAuth: true });
   },
 
   getById(id: string): Promise<Listing> {
@@ -48,6 +44,14 @@ export const listingsService = {
 
   submit(id: string): Promise<Listing> {
     return apiClient.post<Listing>(endpoints.listings.submit(id));
+  },
+
+  renew(id: string): Promise<Listing> {
+    return apiClient.post<Listing>(endpoints.listings.renew(id));
+  },
+
+  similar(id: string): Promise<Listing[]> {
+    return apiClient.get<Listing[]>(endpoints.listings.similar(id), { skipAuth: true });
   },
 
   withdraw(id: string): Promise<Listing> {

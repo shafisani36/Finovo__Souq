@@ -1,6 +1,7 @@
 import { apiClient } from '../api/client';
 import { endpoints } from '../api/endpoints';
-import type { Listing, ListingReport, Paginated, ReportStatus, User, UserStatus } from '../types';
+import type { AdminCategory, CategoryPayload, Listing, ListingReport, ModerationLogEntry, Paginated, ReportStatus, User, UserStatus } from '../types';
+import { categoriesService } from './categories.service';
 
 export const adminService = {
   moderationQueue(params: { status?: string; category?: string; q?: string; page?: number }): Promise<Paginated<Listing>> {
@@ -31,6 +32,47 @@ export const adminService = {
 
   setUserStatus(userId: string, status: UserStatus, reason: string): Promise<User> {
     return apiClient.patch<User>(endpoints.admin.userStatus(userId), { status, reason });
+  },
+
+  history(params: { type?: string; page?: number }): Promise<Paginated<ModerationLogEntry>> {
+    return apiClient.get<Paginated<ModerationLogEntry>>(endpoints.admin.history, { params });
+  },
+
+  promotions(): Promise<Listing[]> {
+    return apiClient.get<Listing[]>(endpoints.admin.promotions);
+  },
+
+  feature(listingId: string, days: number): Promise<Listing> {
+    return apiClient.post<Listing>(endpoints.admin.feature(listingId), { days });
+  },
+
+  stopFeature(listingId: string): Promise<Listing> {
+    return apiClient.delete<Listing>(endpoints.admin.feature(listingId));
+  },
+
+  categories(): Promise<AdminCategory[]> {
+    return apiClient.get<AdminCategory[]>(endpoints.admin.categories);
+  },
+
+  // Every change clears the cached public tree so menus and pickers show it straight away
+  async createCategory(payload: CategoryPayload): Promise<void> {
+    await apiClient.post(endpoints.admin.categories, payload);
+    categoriesService.clearCache();
+  },
+
+  async updateCategory(id: string, payload: CategoryPayload): Promise<void> {
+    await apiClient.patch(endpoints.admin.category(id), payload);
+    categoriesService.clearCache();
+  },
+
+  async reorderCategories(parentId: string | null, ids: string[]): Promise<void> {
+    await apiClient.post(endpoints.admin.categoryOrder, { parentId, ids });
+    categoriesService.clearCache();
+  },
+
+  async deleteCategory(id: string): Promise<void> {
+    await apiClient.delete(endpoints.admin.category(id));
+    categoriesService.clearCache();
   },
 
   reports(params: { status?: string; page?: number }): Promise<Paginated<ListingReport>> {

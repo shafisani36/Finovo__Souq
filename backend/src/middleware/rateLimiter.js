@@ -1,5 +1,6 @@
 
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
+import { env } from '../config/env.js'
 
 const limiter = (windowMs, limit, message, byUser = false) => rateLimit({
   windowMs,
@@ -9,6 +10,8 @@ const limiter = (windowMs, limit, message, byUser = false) => rateLimit({
   // Signed-in actions are limited per account, so people on one shared network do not block each other
   ...(byUser && { keyGenerator: (req) => req.user?.id ?? ipKeyGenerator(req.ip) }),
   message: { success: false, message },
+  // Automated API tests send many requests from one address; limits apply everywhere else
+  skip: () => env.NODE_ENV === 'test',
 })
 
 export const authLimiter = limiter(15 * 60 * 1000, 10, 'Too many requests. Please try again after 15 minutes.')

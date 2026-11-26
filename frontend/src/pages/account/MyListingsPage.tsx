@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { CheckCircle2, Eye, MoreHorizontal, Pencil, PlusCircle, RotateCcw, Send, Undo2 } from 'lucide-react';
+import { CheckCircle2, Eye, Hourglass, MoreHorizontal, Pencil, PlusCircle, RefreshCw, RotateCcw, Send, Undo2 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getErrorMessage } from '../../api/errors';
 import { PageHeader } from '../../components/dashboard/PageHeader';
@@ -14,7 +14,7 @@ import { useAsync } from '../../hooks/useAsync';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { listingsService } from '../../services/listings.service';
 import type { Listing, ListingStatus } from '../../types';
-import { formatNumber, formatPrice, formatRelative } from '../../utils/format';
+import { formatDate, formatNumber, formatPrice, formatRelative } from '../../utils/format';
 
 const TABS: { value: ListingStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -22,10 +22,16 @@ const TABS: { value: ListingStatus | 'all'; label: string }[] = [
   { value: 'pending_review', label: 'In review' },
   { value: 'changes_required', label: 'Needs changes' },
   { value: 'draft', label: 'Drafts' },
+  { value: 'expired', label: 'Expired' },
   { value: 'withdrawn', label: 'Withdrawn' },
 ];
 
-type PendingAction = { type: 'withdraw' | 'sold' | 'rented' | 'available' | 'submit'; listing: Listing };
+const RENEW_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+
+/** Same rule as the server: expired ads, or live ads in their last three days */
+const canRenew = (l: Listing) => l.status === 'expired' || (l.status === 'published' && l.expiresAt !== null && new Date(l.expiresAt).getTime() - Date.now() <= RENEW_WINDOW_MS);
+
+type PendingAction = { type: 'withdraw' | 'sold' | 'rented' | 'available' | 'submit' | 'renew'; listing: Listing };
 
 const CONFIRM_COPY: Record<PendingAction['type'], { title: string; text: string; button: string }> = {
   withdraw: { title: 'Withdraw this ad?', text: 'It will be removed from search. Buyers who saved it will no longer see it.', button: 'Withdraw ad' },
@@ -33,6 +39,7 @@ const CONFIRM_COPY: Record<PendingAction['type'], { title: string; text: string;
   rented: { title: 'Mark as rented?', text: 'The ad leaves search results and is shown as rented to anyone with the link.', button: 'Mark as rented' },
   available: { title: 'Make available again?', text: 'The ad goes back into search results.', button: 'Make available' },
   submit: { title: 'Submit for review?', text: 'Our team will review the ad. You will get a notification when it is live.', button: 'Submit ad' },
+  renew: { title: 'Renew this ad?', text: 'It goes back online right away for another full period. Nothing in the ad changes, so no new review is needed.', button: 'Renew ad' },
 };
 
 const SUCCESS_TITLE: Record<PendingAction['type'], string> = {
@@ -41,6 +48,7 @@ const SUCCESS_TITLE: Record<PendingAction['type'], string> = {
   rented: 'Marked as rented',
   available: 'Ad is available again',
   submit: 'Sent for review',
+  renew: 'Ad renewed',
 };
 
 export function MyListingsPage() {
@@ -61,6 +69,7 @@ export function MyListingsPage() {
     try {
       if (type === 'withdraw') await listingsService.withdraw(listing.id);
       else if (type === 'submit') await listingsService.submit(listing.id);
+      else if (type === 'renew') await listingsService.renew(listing.id);
       else await listingsService.setAvailability(listing.id, type);
       toast.show({ title: SUCCESS_TITLE[type], message: listing.title });
       setPending(null);
@@ -77,6 +86,7 @@ export function MyListingsPage() {
     if (['draft', 'changes_required', 'published', 'pending_review'].includes(l.status) && l.availability === 'available') {
       items.push({ key: 'edit', label: 'Edit', icon: <Pencil size={15} />, onClick: () => undefined });
     }
+    if (l.status === 'published' && canRenew(l)) items.push({ key: 'renew', label: 'Renew now', icon: <RefreshCw size={15} />, onClick: () => setPending({ type: 'renew', listing: l }) });
     if (l.status === 'draft' || l.status === 'changes_required') items.push({ key: 'submit', label: 'Submit for review', icon: <Send size={15} />, onClick: () => setPending({ type: 'submit', listing: l }) });
     if (l.status === 'published' && l.availability === 'available') {
       items.push({ key: 'sold', label: l.listingType === 'rent' ? 'Mark as rented' : 'Mark as sold', icon: <CheckCircle2 size={15} />, onClick: () => setPending({ type: l.listingType === 'rent' ? 'rented' : 'sold', listing: l }) });
@@ -135,7 +145,13 @@ export function MyListingsPage() {
                     <div className="my-listing__body">
                       <div className="my-listing__top">
                         <ListingStatusBadge status={l.status} availability={l.availability} />
-                        <span className="text-muted">Updated {formatRelative(l.updatedAt)}</span>
+                        {l.status === 'published' && l.expiresAt ? (
+                          <span className={canRenew(l) ? 'my-listing__expiry is-soon' : 'text-muted'}>
+                            {canRenew(l) && <Hourglass size={13} />} Live until {formatDate(l.expiresAt)}
+                          </span>
+                        ) : (
+                          <span className="text-muted">Updated {formatRelative(l.updatedAt)}</span>
+                        )}
                       </div>
                       <h3 className="my-listing__title">{l.title}</h3>
                       <p className="my-listing__meta">
@@ -157,6 +173,10 @@ export function MyListingsPage() {
                         <ButtonLink to={`/account/listings/${l.id}/edit`} size="sm" variant="primary" icon={<Pencil size={14} />}>
                           Fix and resubmit
                         </ButtonLink>
+                      ) : l.status === 'expired' ? (
+                        <Button size="sm" variant="primary" icon={<RefreshCw size={14} />} onClick={() => setPending({ type: 'renew', listing: l })}>
+                          Renew
+                        </Button>
                       ) : (
                         <ButtonLink to={`/listings/${l.id}`} size="sm" icon={<Eye size={14} />}>
                           View

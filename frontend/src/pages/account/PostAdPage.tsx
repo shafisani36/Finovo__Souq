@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Clock, ImagePlus, MapPin, Send, St
 import { useNavigate, useParams } from 'react-router-dom';
 import { ApiError, getErrorMessage } from '../../api/errors';
 import { PageHeader } from '../../components/dashboard/PageHeader';
-import { CategoryIcon } from '../../components/listings/CategoryIcon';
+import { CategoryPicker } from '../../components/listings/CategoryPicker';
 import { ListingImage } from '../../components/listings/ListingImage';
 import { ListingStatusBadge } from '../../components/ui/Badge';
 import { Button, ButtonLink } from '../../components/ui/Button';
@@ -16,8 +16,10 @@ import { canSell } from '../../features/auth/rbac';
 import { useAsync } from '../../hooks/useAsync';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { categoriesService } from '../../services/categories.service';
+import { settingsService } from '../../services/settings.service';
 import { listingsService } from '../../services/listings.service';
 import type { Category, Listing, ListingDraftPayload, ListingPhoto, ListingType } from '../../types';
+import { trailOf } from '../../utils/categories';
 import { formatNumber, formatPrice, LISTING_TYPE_LABELS } from '../../utils/format';
 
 type Step = 0 | 1 | 2 | 3;
@@ -43,10 +45,7 @@ interface NewPhoto {
 const EMPTY_FORM: FormState = { categoryId: '', listingType: 'sale', title: '', description: '', price: '', city: '', district: '', attributes: {} };
 
 function allowedTypes(category: Category | undefined): ListingType[] {
-  if (!category) return ['sale'];
-  if (category.slug === 'property') return ['sale', 'rent'];
-  if (category.slug === 'services') return ['service'];
-  return ['sale'];
+  return category?.listingTypes.length ? category.listingTypes : ['sale'];
 }
 
 function formFromListing(l: Listing): FormState {
@@ -78,8 +77,11 @@ function validateDetails(form: FormState, category: Category | undefined): Recor
     if (field.required && !value) errors[`attributes.${field.fieldKey}`] = `${field.label} is required.`;
     if (value && field.inputType === 'number') {
       const n = Number(value);
-      if (!Number.isFinite(n) || n < 0) errors[`attributes.${field.fieldKey}`] = `${field.label} must be a positive number.`;
-      if (field.fieldKey === 'year' && (n < 1950 || n > new Date().getFullYear() + 1)) errors[`attributes.${field.fieldKey}`] = 'Enter a valid year.';
+      const max = field.fieldKey === 'year' ? Math.min(field.max ?? Infinity, new Date().getFullYear() + 1) : field.max;
+      const key = `attributes.${field.fieldKey}`;
+      if (!Number.isFinite(n) || n < 0) errors[key] = `${field.label} must be a positive number.`;
+      else if (field.min !== undefined && n < field.min) errors[key] = `${field.label} must be at least ${field.min}.`;
+      else if (max !== undefined && n > max) errors[key] = `${field.label} must be at most ${max}.`;
     }
   });
   return errors;
@@ -109,6 +111,7 @@ export function PostAdPage() {
   useDocumentTitle(isEdit ? 'Edit ad' : 'Post an ad');
   const { user } = useAuth();
   const categories = useAsync(() => categoriesService.list(), []);
+  const settings = useAsync(() => settingsService.get(), []);
   const existing = useAsync(() => (id ? listingsService.getById(id) : Promise.resolve(null)), [id]);
 
   if (!canSell(user)) {
@@ -118,8 +121,9 @@ export function PostAdPage() {
       </div>
     );
   }
-  if (categories.isLoading || (isEdit && existing.isLoading)) return <LoadingState label="Loading..." />;
+  if (categories.isLoading || settings.isLoading || (isEdit && existing.isLoading)) return <LoadingState label="Loading..." />;
   if (categories.error || !categories.data) return <ErrorState error={categories.error} onRetry={categories.reload} />;
+  if (settings.error || !settings.data) return <ErrorState error={settings.error} onRetry={settings.reload} />;
   if (isEdit && (existing.error || !existing.data)) return <ErrorState error={existing.error} onRetry={existing.reload} title="We could not load this ad" />;
   if (existing.data && !['draft', 'changes_required', 'published', 'pending_review'].includes(existing.data.status)) {
     return (
@@ -129,10 +133,17 @@ export function PostAdPage() {
     );
   }
 
-  return <PostAdForm key={id ?? 'new'} categories={categories.data} existing={existing.data ?? null} />;
+  if (existing.data && !categories.data.some((c) => c.id === existing.data?.categoryId)) {
+    return (
+      <div className="card">
+        <EmptyState title="This category is no longer available" text="Our team has closed the category this ad was in, so it cannot be edited right now. You can post a new ad in another category." action={<ButtonLink to="/account/listings/new" variant="primary">Post a new ad</ButtonLink>} />
+      </div>
+    );
+  }
+  return <PostAdForm key={id ?? 'new'} categories={categories.data} maxPhotos={settings.data.listings.maxPhotos} existing={existing.data ?? null} />;
 }
 
-function PostAdForm({ categories, existing }: { categories: Category[]; existing: Listing | null }) {
+function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[]; maxPhotos: number; existing: Listing | null }) {
   const isEdit = Boolean(existing);
   const navigate = useNavigate();
   const toast = useToast();
@@ -159,11 +170,12 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
   const category = categories.find((c) => c.id === form.categoryId);
   const existingPhotoCount = savedPhotos.length;
   const totalPhotos = existingPhotoCount + photos.length;
-  const photosRequired = category?.slug !== 'services';
+  const photosRequired = !category || allowedTypes(category).some((type) => type !== 'service');
+  const categoryTrail = trailOf(categories, category).map((c) => c.name).join(' › ');
 
   const previewListing = useMemo(
-    () => ({ photos: photos.map((p, i) => ({ id: p.id, url: p.previewUrl, position: i })), categorySlug: category?.slug ?? '', title: form.title }),
-    [photos, category?.slug, form.title],
+    () => ({ photos: photos.map((p, i) => ({ id: p.id, url: p.previewUrl, position: i })), categoryIcon: category?.icon ?? 'tag', title: form.title }),
+    [photos, category?.icon, form.title],
   );
 
   const setField = (key: keyof FormState, value: string) => {
@@ -204,11 +216,11 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
     event.target.value = '';
     const problems: string[] = [];
     const accepted: NewPhoto[] = [];
-    let slots = LISTING_PHOTO_LIMITS.maxCount - totalPhotos;
+    let slots = maxPhotos - totalPhotos;
     files.forEach((file) => {
       if (!(LISTING_PHOTO_LIMITS.acceptedTypes as readonly string[]).includes(file.type)) problems.push(`${file.name}: use JPG, PNG or WebP.`);
       else if (file.size > LISTING_PHOTO_LIMITS.maxSizeBytes) problems.push(`${file.name}: larger than ${LISTING_PHOTO_LIMITS.maxSizeBytes / 1024 / 1024} MB.`);
-      else if (slots <= 0) problems.push(`Only ${LISTING_PHOTO_LIMITS.maxCount} photos are allowed.`);
+      else if (slots <= 0) problems.push(`Only ${maxPhotos} photos are allowed.`);
       else {
         accepted.push({ id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`, file, previewUrl: URL.createObjectURL(file) });
         slots -= 1;
@@ -344,18 +356,8 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
       {step === 0 && (
         <section className="card">
           <h2 className="card-title">What are you posting?</h2>
-          <p className="card-subtitle">The category decides which details buyers can filter by.</p>
-          <div className="category-picker">
-            {categories.map((c) => (
-              <button key={c.id} type="button" className={`category-picker__item${form.categoryId === c.id ? ' is-selected' : ''}`} onClick={() => chooseCategory(c)}>
-                <span className="category-tile__icon">
-                  <CategoryIcon icon={c.icon} size={24} strokeWidth={1.8} />
-                </span>
-                <strong>{c.name}</strong>
-                <span className="text-muted">{c.description}</span>
-              </button>
-            ))}
-          </div>
+          <p className="card-subtitle">Choose the category, then the most specific subcategory. It decides which details buyers can filter by.</p>
+          <CategoryPicker categories={categories} value={form.categoryId} onSelect={chooseCategory} />
         </section>
       )}
 
@@ -365,7 +367,7 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
             <div>
               <h2 className="card-title">Ad details</h2>
               <p className="card-subtitle">
-                Category: <strong>{category.name}</strong>
+                Category: <strong>{categoryTrail}</strong>
                 {!isEdit && (
                   <button type="button" className="link link--button" onClick={() => setStep(0)} style={{ marginInlineStart: 8 }}>
                     Change
@@ -399,7 +401,7 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
               placeholder={category.slug === 'cars' ? 'e.g. Toyota Camry GLE 2022, single owner' : 'A short, clear title'}
             />
             <InputField
-              label={form.listingType === 'rent' ? 'Rent per year (SAR)' : category.slug === 'services' ? 'Price (SAR)' : 'Price (SAR)'}
+              label={form.listingType === 'rent' ? 'Rent per year (SAR)' : form.listingType === 'service' ? 'Price or starting price (SAR)' : 'Price (SAR)'}
               required
               type="number"
               inputMode="numeric"
@@ -429,7 +431,8 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
                   required={field.required}
                   type={field.inputType === 'number' ? 'number' : 'text'}
                   inputMode={field.inputType === 'number' ? 'numeric' : undefined}
-                  min={field.inputType === 'number' ? 0 : undefined}
+                  min={field.inputType === 'number' ? (field.min ?? 0) : undefined}
+                  max={field.inputType === 'number' ? field.max : undefined}
                   value={form.attributes[field.fieldKey] ?? ''}
                   onChange={(e) => setAttribute(field.fieldKey, e.target.value)}
                   error={errors[`attributes.${field.fieldKey}`]}
@@ -468,7 +471,7 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
         <section className="card">
           <h2 className="card-title">Photos</h2>
           <p className="card-subtitle">
-            Up to {LISTING_PHOTO_LIMITS.maxCount} photos, JPG, PNG or WebP, max {LISTING_PHOTO_LIMITS.maxSizeBytes / 1024 / 1024} MB each. The first photo is the cover.
+            Up to {maxPhotos} photos, JPG, PNG or WebP, max {LISTING_PHOTO_LIMITS.maxSizeBytes / 1024 / 1024} MB each. The first photo is the cover.
           </p>
           <div className="photo-grid">
             {savedPhotos.map((p, index) => (
@@ -495,12 +498,12 @@ function PostAdForm({ categories, existing }: { categories: Category[]; existing
                 </button>
               </div>
             ))}
-            {totalPhotos < LISTING_PHOTO_LIMITS.maxCount && (
+            {totalPhotos < maxPhotos && (
               <button type="button" className="photo-grid__add" onClick={() => fileInput.current?.click()}>
                 <ImagePlus size={26} />
                 <span>Add photos</span>
                 <span className="text-muted tabular">
-                  {totalPhotos}/{LISTING_PHOTO_LIMITS.maxCount}
+                  {totalPhotos}/{maxPhotos}
                 </span>
               </button>
             )}

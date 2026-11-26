@@ -15,11 +15,15 @@ const savedSearchSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     label: { type: String, required: true, trim: true, maxlength: 80 },
     criteria: { type: mongoose.Schema.Types.Mixed, default: {} },
+    // Notify the user when a newly approved ad matches this search
+    alertsEnabled: { type: Boolean, default: true },
+    lastAlertAt: { type: Date, default: null },
   },
   { timestamps: true, minimize: false }
 )
+savedSearchSchema.index({ alertsEnabled: 1 })
 savedSearchSchema.set('toJSON', {
-  transform: (doc, ret) => ({ id: ret._id.toString(), label: ret.label, criteria: ret.criteria, createdAt: ret.createdAt }),
+  transform: (doc, ret) => ({ id: ret._id.toString(), label: ret.label, criteria: ret.criteria, alertsEnabled: ret.alertsEnabled !== false, createdAt: ret.createdAt }),
 })
 
 export const SavedListing = mongoose.model('SavedListing', savedListingSchema)

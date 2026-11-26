@@ -1,15 +1,58 @@
-import { Armchair, Building2, CarFront, Smartphone, Wrench, type LucideProps } from 'lucide-react';
+import {
+  Armchair,
+  BedDouble,
+  Bike,
+  Building2,
+  Camera,
+  CarFront,
+  Cog,
+  CookingPot,
+  Gamepad2,
+  GraduationCap,
+  Hammer,
+  LandPlot,
+  Laptop,
+  Lamp,
+  Smartphone,
+  Sofa,
+  Sparkles,
+  Store,
+  Tag,
+  Truck,
+  Tv,
+  Wrench,
+  MonitorSmartphone,
+  type LucideProps,
+} from 'lucide-react';
 import type { CategoryIconKey } from '../../types';
 
-const ICONS = {
+const CATEGORY_ICONS: Record<CategoryIconKey, typeof Tag> = {
   car: CarFront,
+  motorcycle: Bike,
+  parts: Cog,
   property: Building2,
-  electronics: Smartphone,
+  land: LandPlot,
+  store: Store,
+  electronics: MonitorSmartphone,
+  phone: Smartphone,
+  laptop: Laptop,
+  tv: Tv,
+  camera: Camera,
+  gaming: Gamepad2,
   furniture: Armchair,
+  sofa: Sofa,
+  bed: BedDouble,
+  kitchen: CookingPot,
+  decor: Lamp,
   services: Wrench,
-} as const;
+  cleaning: Sparkles,
+  truck: Truck,
+  tools: Hammer,
+  education: GraduationCap,
+  tag: Tag,
+};
 
 export function CategoryIcon({ icon, ...props }: { icon: CategoryIconKey } & LucideProps) {
-  const Icon = ICONS[icon];
+  const Icon = CATEGORY_ICONS[icon] ?? Tag;
   return <Icon {...props} />;
 }

@@ -65,7 +65,7 @@ export function SearchBar({ categories, initial, variant = 'default', showCatego
             value={category}
             onChange={setCategory}
             placeholder="All categories"
-            options={categories.map((c) => ({ value: c.slug, label: c.name }))}
+            options={categories.filter((c) => c.depth < 2).map((c) => ({ value: c.slug, label: c.depth ? `\u2003${c.name}` : c.name }))}
             icon={<LayoutGrid size={18} />}
             aria-label="Category"
           />

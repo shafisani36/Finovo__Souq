@@ -46,7 +46,8 @@ export function HomePage() {
   useDocumentTitle('');
   const { user } = useAuth();
   const categories = useAsync(() => categoriesService.list(), []);
-  const latest = useAsync(() => listingsService.search({ sort: 'newest', pageSize: 8 }), []);
+  const latest = useAsync(() => listingsService.search({ sort: 'latest', pageSize: 8 }), []);
+  const featured = useAsync(() => listingsService.search({ featured: 'true', pageSize: 4 }), []);
   const isSeller = canSell(user);
   const joinLink = !user ? '/register' : user.role === 'admin' ? '/admin/dashboard' : isSeller ? '/account/listings/new' : '/search';
 
@@ -116,7 +117,7 @@ export function HomePage() {
           </div>
           <div className="category-cards">
             {categories.data
-              ? categories.data.map((category, i) => (
+              ? categories.data.filter((c) => c.depth === 0).map((category, i) => (
                   <Link key={category.id} to={`/search?category=${category.slug}`} className="category-card" data-reveal style={revealDelay(i)}>
                     <span className="category-card__icon">
                       <CategoryIcon icon={category.icon} size={22} strokeWidth={1.8} aria-hidden="true" />
@@ -155,6 +156,28 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {Boolean(featured.data?.items.length) && (
+        <section className="section-lg" aria-labelledby="featured-title">
+          <div className="container">
+            <div className="section-intro section-intro--row" data-reveal>
+              <div>
+                <h2 id="featured-title" className="section-intro__title">
+                  Featured ads
+                </h2>
+                <p className="section-intro__text">Picked by our team and shown first.</p>
+              </div>
+            </div>
+            <div className="listing-grid">
+              {featured.data?.items.map((listing, i) => (
+                <div key={listing.id} data-reveal style={revealDelay(i % 4)}>
+                  <ListingCard listing={listing} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="section-lg" aria-labelledby="latest-title">
         <div className="container">

@@ -5,7 +5,6 @@ import { getErrorMessage } from '../../api/errors';
 import { MessageBubble } from '../../components/chat/MessageBubble';
 import { MAX_VOICE_SECONDS, useVoiceRecorder, type VoiceRecording } from '../../components/chat/useVoiceRecorder';
 import { PageHeader } from '../../components/dashboard/PageHeader';
-import { iconForSlug } from '../../components/listings/category-icons';
 import { CategoryIcon } from '../../components/listings/CategoryIcon';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
@@ -35,7 +34,7 @@ function ListingThumb({ conversation }: { conversation: Conversation }) {
     <img className="chat-thumb" src={conversation.listingPhotoUrl} alt="" />
   ) : (
     <span className="chat-thumb chat-thumb--empty">
-      <CategoryIcon icon={iconForSlug(conversation.listingCategorySlug)} size={18} />
+      <CategoryIcon icon={conversation.listingCategoryIcon} size={18} />
     </span>
   );
 }

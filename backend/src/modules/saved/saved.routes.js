@@ -12,6 +12,9 @@ import { SavedListing, SavedSearch } from './saved.model.js'
 
 const MAX_SAVED_SEARCHES = 20
 const CRITERIA_KEYS = ['q', 'city', 'category', 'minPrice', 'maxPrice', 'sort']
+// Category detail filters from the browse page, such as f_make or f_year_min
+const ATTRIBUTE_KEY = /^f_[a-zA-Z0-9]{2,30}(?:_min|_max)?$/
+const MAX_ATTRIBUTE_FILTERS = 10
 
 const router = Router()
 // Applied per route: this router shares the /users/me prefix with the profile routes
@@ -48,9 +51,21 @@ router.post('/saved-searches', member, writeLimiter, asyncHandler(async (req, re
     throw new ApiError(409, `You can keep up to ${MAX_SAVED_SEARCHES} saved searches`)
   }
   const source = req.body.criteria && typeof req.body.criteria === 'object' ? req.body.criteria : {}
-  const criteria = Object.fromEntries(CRITERIA_KEYS.filter((k) => source[k] !== undefined && source[k] !== '').map((k) => [k, String(source[k]).slice(0, 100)]))
+  const attributeKeys = Object.keys(source).filter((k) => ATTRIBUTE_KEY.test(k)).slice(0, MAX_ATTRIBUTE_FILTERS)
+  const criteria = Object.fromEntries([...CRITERIA_KEYS, ...attributeKeys].filter((k) => source[k] !== undefined && source[k] !== '').map((k) => [k, String(source[k]).slice(0, 100)]))
   const search = await SavedSearch.create({ user: req.user.id, label, criteria })
   res.status(201).json(new ApiResponse(201, search, 'Search saved'))
+}))
+
+router.patch('/saved-searches/:id', member, writeLimiter, asyncHandler(async (req, res) => {
+  if (typeof req.body.alertsEnabled !== 'boolean') throw ApiError.validation({ alertsEnabled: 'Choose on or off' })
+  const search = await SavedSearch.findOneAndUpdate(
+    { _id: req.params.id, user: req.user.id },
+    { alertsEnabled: req.body.alertsEnabled },
+    { returnDocument: 'after' }
+  )
+  if (!search) throw ApiError.notFound('Saved search not found')
+  res.json(new ApiResponse(200, search, req.body.alertsEnabled ? 'Alerts turned on' : 'Alerts turned off'))
 }))
 
 router.delete('/saved-searches/:id', member, asyncHandler(async (req, res) => {

@@ -8,6 +8,7 @@ import './styles/layout.css';
 import './styles/pages.css';
 import './styles/marketing.css';
 import './styles/chat.css';
+import './styles/categories.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

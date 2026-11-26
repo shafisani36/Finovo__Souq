@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer'
 
 import { env } from '../config/env.js'
 import ApiError from '../utils/ApiError.js'
+import { logger } from '../utils/logger.js'
 
 const transporter = env.MAIL_HOST
   ? nodemailer.createTransport({
@@ -19,7 +20,8 @@ export const sendMail = async ({ to, subject, text, html }) => {
   try {
     await transporter.sendMail({ from: { name: env.MAIL_FROM_NAME, address: env.MAIL_FROM_ADDRESS }, to, subject, text, html })
   } catch (error) {
-    console.error('Email send failed:', error.message)
+    // The address is left out of the log on purpose
+    logger.error('email send failed', { error: error.message })
     throw new ApiError(503, 'We could not send the email. Please try again in a few minutes.')
   }
 }

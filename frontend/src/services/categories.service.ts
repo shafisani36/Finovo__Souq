@@ -15,4 +15,8 @@ export const categoriesService = {
     }
     return cachedCategories;
   },
+
+  clearCache(): void {
+    cachedCategories = null;
+  },
 };

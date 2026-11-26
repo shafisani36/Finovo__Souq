@@ -1,19 +1,17 @@
 
 import Redis from 'ioredis'
 import { env } from './env.js'
+import { logger } from '../utils/logger.js'
 
 const redis = new Redis({
   host: env.REDIS_HOST,
   port: env.REDIS_PORT,
   password: env.REDIS_PASSWORD || undefined,
+  db: env.REDIS_DB,
 
+  // Keep reconnecting with a growing pause (up to 5 seconds), so a short Redis restart never needs an API restart
   retryStrategy(times) {
-    if (times > 5) {
-      console.error('Redis connection failed after 5 attempts.')
-      return null
-    }
-
-    return Math.min(times * 1000, 5000)
+    return Math.min(times * 500, 5000)
   },
 
   maxRetriesPerRequest: 3,
@@ -21,20 +19,20 @@ const redis = new Redis({
 })
 
 redis.on('connect', () => {
-  console.log('Redis connected successfully.')
+  logger.info('Redis connected')
 })
 
 redis.on('error', (error) => {
-  console.error('Redis Error:', error.message)
+  logger.error('Redis error', { error: error.message })
 })
 
 export const connectRedis = async () => {
   try {
     await redis.connect()
     await redis.ping()
-    console.log('Redis is ready.')
+    logger.info('Redis ready')
   } catch (error) {
-    console.error('Redis connection failed:', error.message)
+    logger.error('Redis connection failed', { error: error.message })
     throw error
   }
 }

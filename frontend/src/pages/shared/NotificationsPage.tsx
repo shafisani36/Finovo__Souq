@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Bell, CheckCheck, CheckCircle2, ChevronRight, FileEdit, Flag, MessageSquare, XCircle } from 'lucide-react';
+import { Bell, BellRing, Sparkles, CheckCheck, CheckCircle2, ChevronRight, FileEdit, Flag, Hourglass, MessageSquare, TimerOff, TrendingDown, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/dashboard/PageHeader';
 import { Button } from '../../components/ui/Button';
@@ -18,6 +18,11 @@ const TYPE_META: Record<NotificationType, { icon: typeof Bell; label: string }> 
   new_message: { icon: MessageSquare, label: 'Message' },
   report_update: { icon: Flag, label: 'Report' },
   system: { icon: Bell, label: 'Update' },
+  saved_search_match: { icon: BellRing, label: 'Search alert' },
+  price_drop: { icon: TrendingDown, label: 'Price drop' },
+  listing_expiring: { icon: Hourglass, label: 'Expiring soon' },
+  listing_expired: { icon: TimerOff, label: 'Ad expired' },
+  listing_featured: { icon: Sparkles, label: 'Featured' },
 };
 
 type Filter = 'all' | 'unread';

@@ -73,6 +73,7 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   rejected: 'Rejected',
   hidden: 'Hidden',
   withdrawn: 'Withdrawn',
+  expired: 'Expired',
 };
 
 export const LISTING_TYPE_LABELS: Record<ListingType, string> = {
