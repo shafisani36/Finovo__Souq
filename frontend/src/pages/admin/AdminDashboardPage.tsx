@@ -20,6 +20,7 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { dashboardService, type DashboardRange } from '../../services/dashboard.service';
 import { downloadCsv } from '../../utils/csv';
 import { formatNumber, formatPrice, formatRelative } from '../../utils/format';
+import { t } from '../../i18n';
 
 const KPI_ICONS: Record<string, ReactNode> = {
   liveListings: <Layers size={18} />,
@@ -34,7 +35,7 @@ const CATEGORY_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)'
 const LOWER_IS_BETTER = new Set(['pendingReview', 'openReports']);
 
 export function AdminDashboardPage() {
-  useDocumentTitle('Admin dashboard');
+  useDocumentTitle(t('Admin dashboard'));
   const { user } = useAuth();
   const [range, setRange] = useState<DashboardRange>('30d');
   const { data, error, isLoading, reload } = useAsync(() => dashboardService.admin(range), [range]);
@@ -65,12 +66,12 @@ export function AdminDashboardPage() {
     <>
       <PageHeader
         title={greeting(user?.name)}
-        subtitle="Here is what is happening on Finovo Souq."
+        subtitle={t('Here is what is happening on Finovo Souq.')}
         actions={
           <>
             <RangePicker value={range} onChange={setRange} />
             <Button variant="primary" icon={<Download size={16} />} onClick={exportData} disabled={!data}>
-              Export data
+              {t('Export data')}
             </Button>
           </>
         }
@@ -93,8 +94,8 @@ export function AdminDashboardPage() {
           <section className="card span-8">
             <div className="card-header">
               <div>
-                <h2 className="card-title">Ads submitted</h2>
-                <p className="card-subtitle">Ads sent for review, and how many were approved</p>
+                <h2 className="card-title">{t('Ads submitted')}</h2>
+                <p className="card-subtitle">{t('Ads sent for review, and how many were approved')}</p>
               </div>
             </div>
             {isLoading || !data ? (
@@ -103,17 +104,17 @@ export function AdminDashboardPage() {
               <>
                 <div className="figure-row">
                   <p className="figure">
-                    <span className="figure__label">Submitted</span>
+                    <span className="figure__label">{t('Submitted')}</span>
                     <strong className="tabular">{formatNumber(activity.submitted)}</strong>
                   </p>
                   <p className="figure">
-                    <span className="figure__label">Approved</span>
+                    <span className="figure__label">{t('Approved')}</span>
                     <strong className="tabular">{formatNumber(activity.approved)}</strong>
                   </p>
                 </div>
                 <StackedBarChart
                   data={activity.bars}
-                  label="Ads submitted per day, split into approved and not approved"
+                  label={t('Ads submitted per day, split into approved and not approved')}
                   series={[
                     { name: 'Approved', color: 'var(--series-1)' },
                     { name: 'Not approved yet', color: 'var(--series-1)', striped: true },
@@ -127,35 +128,38 @@ export function AdminDashboardPage() {
             <section className="card">
               <div className="card-header">
                 <div>
-                  <h2 className="card-title">Live ads by category</h2>
-                  <p className="card-subtitle">Share of all live ads</p>
+                  <h2 className="card-title">{t('Live ads by category')}</h2>
+                  <p className="card-subtitle">{t('Share of all live ads')}</p>
                 </div>
               </div>
               {isLoading || !data ? (
                 <SkeletonBlock height={190} />
               ) : (
-                <SegmentedBar label="Live ads by category" segments={data.categoryBreakdown.map((c, i) => ({ label: c.name, value: c.count, color: CATEGORY_COLORS[i] ?? 'var(--series-other)' }))} />
+                <SegmentedBar
+                  label={t('Live ads by category')}
+                  segments={data.categoryBreakdown.map((c, i) => ({ label: c.name, value: c.count, color: CATEGORY_COLORS[i] ?? 'var(--series-other)' }))}
+                />
               )}
             </section>
             <section className="card">
               <div className="card-header">
                 <div>
-                  <h2 className="card-title">Approval rate</h2>
-                  <p className="card-subtitle">Reviewed ads that went live</p>
+                  <h2 className="card-title">{t('Approval rate')}</h2>
+                  <p className="card-subtitle">{t('Reviewed ads that went live')}</p>
                 </div>
               </div>
-              {isLoading || !data ? <SkeletonBlock height={140} /> : <GaugeChart value={data.approvalRate} label="Approval rate" caption="approved" />}
+              {isLoading || !data ? <SkeletonBlock height={140} /> : <GaugeChart value={data.approvalRate} label={t('Approval rate')} caption="approved" />}
             </section>
           </div>
 
           <section className="card card--flush span-8">
             <div className="card-header card-header--padded">
               <div>
-                <h2 className="card-title">Waiting for review</h2>
-                <p className="card-subtitle">Oldest first</p>
+                <h2 className="card-title">{t('Waiting for review')}</h2>
+                <p className="card-subtitle">{t('Oldest first')}</p>
               </div>
               <ButtonLink to="/admin/moderation" size="sm" icon={<ArrowRight size={15} />}>
-                Open queue
+                {t('Open queue')}
               </ButtonLink>
             </div>
             {isLoading || !data ? (
@@ -163,19 +167,19 @@ export function AdminDashboardPage() {
                 <SkeletonBlock height={220} />
               </div>
             ) : data.pendingQueue.length === 0 ? (
-              <p className="text-muted card-body">Nothing waiting. Great work.</p>
+              <p className="text-muted card-body">{t('Nothing waiting. Great work.')}</p>
             ) : (
               <div className="table-wrap">
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Ad</th>
-                      <th>Seller</th>
-                      <th>City</th>
-                      <th className="table__num">Price</th>
-                      <th className="table__num">Submitted</th>
+                      <th>{t('Ad')}</th>
+                      <th>{t('Seller')}</th>
+                      <th>{t('City')}</th>
+                      <th className="table__num">{t('Price')}</th>
+                      <th className="table__num">{t('Submitted')}</th>
                       <th className="table__actions">
-                        <span className="sr-only">Actions</span>
+                        <span className="sr-only">{t('Actions')}</span>
                       </th>
                     </tr>
                   </thead>
@@ -194,11 +198,17 @@ export function AdminDashboardPage() {
                           </Link>
                         </td>
                         <td>{listing.seller.name}</td>
-                        <td>{listing.city}</td>
+                        <td>{t(listing.city)}</td>
                         <td className="table__num">{formatPrice(listing.price, listing.listingType)}</td>
                         <td className="table__num text-muted">{formatRelative(listing.updatedAt)}</td>
                         <td className="table__actions">
-                          <Link to={`/admin/moderation?review=${listing.id}`} className="icon-btn icon-btn--sm" aria-label={`Review ${listing.title}`}>
+                          <Link
+                            to={`/admin/moderation?review=${listing.id}`}
+                            className="icon-btn icon-btn--sm"
+                            aria-label={t('Review {title}', {
+                              title: listing.title,
+                            })}
+                          >
                             <Eye size={16} />
                           </Link>
                         </td>
@@ -213,11 +223,11 @@ export function AdminDashboardPage() {
           <section className="card span-4">
             <div className="card-header">
               <div>
-                <h2 className="card-title">Latest reports</h2>
-                <p className="card-subtitle">From buyers and sellers</p>
+                <h2 className="card-title">{t('Latest reports')}</h2>
+                <p className="card-subtitle">{t('From buyers and sellers')}</p>
               </div>
               <Link to="/admin/reports" className="link">
-                View all
+                {t('View all')}
               </Link>
             </div>
             {isLoading || !data ? (
@@ -227,7 +237,7 @@ export function AdminDashboardPage() {
                 {data.recentReports.map((report) => (
                   <li key={report.id}>
                     <div className="preview-list__row">
-                      <strong>{report.reason}</strong>
+                      <strong>{t(report.reason)}</strong>
                       <ReportStatusBadge status={report.status} />
                     </div>
                     <p className="preview-list__sub">{report.listingTitle}</p>

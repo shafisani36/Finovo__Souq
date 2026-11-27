@@ -22,6 +22,8 @@ if (process.env.NODE_ENV === 'production') {
   }
   if (process.env.JWT_ACCESS_SECRET === process.env.JWT_REFRESH_SECRET) throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different')
   if (!process.env.CLIENT_URL?.startsWith('https://')) throw new Error('CLIENT_URL must be the https address of the website in production')
+  // Without the webhook a payment made after the buyer closes the tab would never be applied
+  if (process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_WEBHOOK_SECRET) throw new Error('STRIPE_WEBHOOK_SECRET is required when Stripe payments are on')
 }
 
 export const env = {
@@ -38,6 +40,10 @@ export const env = {
 
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
   TRUST_PROXY: Number(process.env.TRUST_PROXY ?? 1),
+
+  // Paid featured ads through Stripe Checkout; payments are off while the secret key is empty
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
 
   REDIS_HOST: process.env.REDIS_HOST || '127.0.0.1',
   REDIS_PORT: Number(process.env.REDIS_PORT) || 6379,

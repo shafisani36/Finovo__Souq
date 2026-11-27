@@ -11,6 +11,8 @@ const messageSchema = new mongoose.Schema(
       type: new mongoose.Schema({ key: String, mime: String, size: Number, width: Number, height: Number, duration: Number }, { _id: false }),
       default: null,
     },
+    // Scam signs found in the text (see chat.safety.js); the other person sees a warning
+    risks: { type: [String], default: undefined },
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true }

@@ -67,7 +67,7 @@ export const registerUser = async (data, req) => {
     name,
     email,
     password,
-    phone,
+    phone: phone || null,
     accountType,
     status: isSeller ? 'pending' : 'active',
   })

@@ -1,5 +1,6 @@
 import { useRef, useState, type CSSProperties } from 'react';
 import { Pause, Play } from 'lucide-react';
+import { t } from '../../i18n';
 
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 
@@ -19,7 +20,7 @@ export function VoicePlayer({ src, duration }: { src: string; duration: number }
 
   return (
     <div className="voice">
-      <button type="button" className="voice__play" onClick={toggle} aria-label={playing ? 'Pause voice message' : 'Play voice message'}>
+      <button type="button" className="voice__play" onClick={toggle} aria-label={playing ? t('Pause voice message') : t('Play voice message')}>
         {playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
       </button>
       <input
@@ -33,7 +34,7 @@ export function VoicePlayer({ src, duration }: { src: string; duration: number }
         onChange={(e) => {
           if (audio.current) audio.current.currentTime = Number(e.target.value);
         }}
-        aria-label="Voice message position"
+        aria-label={t('Voice message position')}
       />
       <span className="voice__time tabular">{clock(playing || position ? duration - position : duration)}</span>
       <audio

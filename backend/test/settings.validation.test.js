@@ -54,3 +54,12 @@ test('ad expiry days', () => {
   assert.deepEqual(validateGeneralSettings({ listings: { expiryDays: 45 } }).listings, { expiryDays: 45 })
   assert.ok(errorsOf(() => validateGeneralSettings({ listings: { expiryDays: 3 } }))['listings.expiryDays'])
 })
+
+test('promotion packages need allowed lengths and sensible prices', () => {
+  const ok = validateGeneralSettings({ promotions: { enabled: true, packages: [{ days: 7, price: 49 }, { days: 3, price: 25 }] } })
+  assert.deepEqual(ok.promotions.packages.map((p) => p.days), [3, 7])
+  assert.throws(() => validateGeneralSettings({ promotions: { enabled: true, packages: [{ days: 5, price: 20 }] } }))
+  assert.throws(() => validateGeneralSettings({ promotions: { enabled: true, packages: [{ days: 3, price: 2 }] } }))
+  assert.throws(() => validateGeneralSettings({ promotions: { enabled: true, packages: [] } }))
+  assert.equal(validateGeneralSettings({ promotions: { enabled: false, packages: [] } }).promotions.enabled, false)
+})

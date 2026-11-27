@@ -7,6 +7,7 @@ import User from '../users/user.model.js'
 import Listing from '../listings/listing.model.js'
 import Conversation from './conversation.model.js'
 import Message from './message.model.js'
+import { detectRisks } from './chat.safety.js'
 
 const PREVIEWS = { image: 'Photo', voice: 'Voice message' }
 
@@ -20,6 +21,7 @@ export const toMessageView = (m) => ({
     ? { url: signedUrl(m.attachment.key), mime: m.attachment.mime, size: m.attachment.size, width: m.attachment.width ?? null, height: m.attachment.height ?? null, duration: m.attachment.duration ?? null }
     : null,
   deleted: Boolean(m.deletedAt),
+  risks: m.deletedAt ? [] : (m.risks ?? []),
   createdAt: m.createdAt,
 })
 
@@ -83,7 +85,8 @@ export const deliverMessage = async (conversation, senderId, data) => {
   const recipientId = conversation[otherRole].toString()
   const hadUnread = conversation.unread[otherRole] > 0
 
-  const message = await Message.create({ ...data, conversation: conversation._id, sender: senderId })
+  const risks = detectRisks(data.body)
+  const message = await Message.create({ ...data, ...(risks.length && { risks }), conversation: conversation._id, sender: senderId })
   conversation.lastMessage = { preview: PREVIEWS[message.type] ?? message.body.slice(0, 120), sender: senderId, at: message.createdAt }
   conversation.unread[otherRole] += 1
   conversation.unread[role] = 0

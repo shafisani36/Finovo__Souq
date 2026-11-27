@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 import type { KpiMetric } from '../../types';
 import { formatKpiValue, percentChange } from '../../utils/format';
+import { t } from '../../i18n';
 
 interface StatCardProps {
   metric: KpiMetric;
@@ -30,7 +31,7 @@ export function StatCard({ metric, icon, higherIsBetter = true, periodLabel = 'v
       <div className="stat-card__foot">
         <span className={`delta delta--${tone}`}>
           <Arrow size={12} aria-hidden="true" />
-          {change === null ? 'New' : `${Math.abs(change)}%`}
+          {change === null ? t('New') : `${Math.abs(change)}%`}
         </span>
         <span className="stat-card__meta">{periodLabel}</span>
       </div>

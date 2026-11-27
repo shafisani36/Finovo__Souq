@@ -6,6 +6,7 @@ import { savedService } from '../../services/saved.service';
 import { useAuth } from '../auth/context/useAuth';
 import { hasPermission } from '../auth/rbac';
 import { SavedListingsContext } from './saved-context';
+import { t } from '../../i18n';
 
 export function SavedListingsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -35,7 +36,7 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
         return false;
       }
       if (!canSave) {
-        toast.show({ title: 'Not available for your account', message: 'Admin accounts cannot save ads.', tone: 'info' });
+        toast.show({ title: t('Not available for your account'), message: t('Admin accounts cannot save ads.'), tone: 'info' });
         return false;
       }
       const wasSaved = savedIds.has(listingId);
@@ -50,7 +51,7 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
       try {
         if (wasSaved) await savedService.removeListing(listingId);
         else await savedService.saveListing(listingId);
-        toast.show({ title: wasSaved ? 'Removed from saved ads' : 'Saved to your list' });
+        toast.show({ title: wasSaved ? t('Removed from saved ads') : t('Saved to your list') });
         return true;
       } catch (error) {
         setSavedIds((s) => {
@@ -59,7 +60,7 @@ export function SavedListingsProvider({ children }: { children: ReactNode }) {
           else next.delete(listingId);
           return next;
         });
-        toast.show({ title: 'Could not update saved ads', message: getErrorMessage(error), tone: 'error' });
+        toast.show({ title: t('Could not update saved ads'), message: getErrorMessage(error), tone: 'error' });
         return false;
       } finally {
         setPendingIds((s) => {

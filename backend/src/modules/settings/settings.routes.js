@@ -4,6 +4,7 @@ import ApiResponse from '../../utils/ApiResponse.js'
 import ApiError from '../../utils/ApiError.js'
 import Setting, { PAGE_SLUGS } from './setting.model.js'
 import { getSettings, invalidateSettings, toPublicSettings } from './settings.service.js'
+import { paymentsAvailable } from '../../services/stripe.service.js'
 import { validateGeneralSettings, validatePage } from './settings.validation.js'
 
 /* ---------- Public ---------- */
@@ -27,8 +28,8 @@ export default router
 export const adminSettingsRouter = Router()
 
 adminSettingsRouter.get('/', asyncHandler(async (req, res) => {
-  const { contact, social, announcement, listings, pages, updatedAt } = await getSettings()
-  res.json(new ApiResponse(200, { contact, social, announcement, listings, pages, updatedAt }))
+  const { contact, social, announcement, listings, promotions, pages, updatedAt } = await getSettings()
+  res.json(new ApiResponse(200, { contact, social, announcement, listings, promotions: { ...promotions, paymentsConfigured: paymentsAvailable() }, pages, updatedAt }))
 }))
 
 adminSettingsRouter.patch('/', asyncHandler(async (req, res) => {

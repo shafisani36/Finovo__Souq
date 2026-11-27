@@ -1,11 +1,12 @@
-import { CURRENCY, DEFAULT_LOCALE } from '../config/app.config';
+import { CURRENCY } from '../config/app.config';
 import type { KpiMetric, ListingStatus, ListingType } from '../types';
+import { locale, t, tn } from '../i18n';
 
-const numberFormatter = new Intl.NumberFormat(DEFAULT_LOCALE);
-const compactFormatter = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
-const dateFormatter = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-const shortDateFormatter = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
-const timeFormatter = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+const numberFormatter = new Intl.NumberFormat(locale);
+const compactFormatter = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 });
+const dateFormatter = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+const shortDateFormatter = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' });
+const timeFormatter = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' });
 
 export function formatNumber(value: number): string {
   return numberFormatter.format(value);
@@ -16,8 +17,9 @@ export function formatCompact(value: number): string {
 }
 
 export function formatPrice(value: number, listingType?: ListingType, rentPeriod: 'year' | 'month' = 'year'): string {
-  const amount = `${CURRENCY} ${numberFormatter.format(value)}`;
-  if (listingType === 'rent') return `${amount} / ${rentPeriod}`;
+  // "SAR 1,500" in English, "1,500 ر.س" in Arabic
+  const amount = t('{currency} {amount}', { currency: t(CURRENCY), amount: numberFormatter.format(value) });
+  if (listingType === 'rent') return t(rentPeriod === 'month' ? '{amount} / month' : '{amount} / year', { amount });
   return amount;
 }
 
@@ -35,13 +37,13 @@ export function formatTime(iso: string): string {
 
 export function formatRelative(iso: string): string {
   const diffSeconds = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diffSeconds < 60) return 'Just now';
+  if (diffSeconds < 60) return t('Just now');
   const minutes = Math.round(diffSeconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60) return t('{minutes} min ago', { minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
+  if (hours < 24) return t('{hours} h ago', { hours });
   const days = Math.round(hours / 24);
-  if (days < 7) return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  if (days < 7) return tn(days, '{count} day ago', '{count} days ago');
   return formatDate(iso);
 }
 
@@ -66,18 +68,18 @@ export function initials(name: string): string {
 }
 
 export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
-  draft: 'Draft',
-  pending_review: 'Pending review',
-  published: 'Live',
-  changes_required: 'Changes required',
-  rejected: 'Rejected',
-  hidden: 'Hidden',
-  withdrawn: 'Withdrawn',
-  expired: 'Expired',
+  draft: t('Draft'),
+  pending_review: t('Pending review'),
+  published: t('Live'),
+  changes_required: t('Changes required'),
+  rejected: t('Rejected'),
+  hidden: t('Hidden'),
+  withdrawn: t('Withdrawn'),
+  expired: t('Expired'),
 };
 
 export const LISTING_TYPE_LABELS: Record<ListingType, string> = {
-  sale: 'For sale',
-  rent: 'For rent',
-  service: 'Service',
+  sale: t('For sale'),
+  rent: t('For rent'),
+  service: t('Service'),
 };

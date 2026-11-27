@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { isValidObjectId } from 'mongoose'
 import authenticate from '../../middleware/authenticate.js'
 import authorize from '../../middleware/authorize.js'
 import { findCategory } from '../categories/category.tree.js'
@@ -20,6 +21,12 @@ import Report, { REPORT_STATUSES, toReportView } from '../reports/report.model.j
 import ModerationLog from './moderationLog.model.js'
 import { alertPriceDrop, alertSavedSearches, runInBackground } from '../alerts/alerts.service.js'
 import { expiryDate } from '../listings/listing.expiry.js'
+import { deleteAccount } from '../users/accountDeletion.service.js'
+import Payment, { PAYMENT_STATUSES } from '../payments/payment.model.js'
+import { approvePromotion, rejectPromotion, toPaymentView } from '../payments/payments.service.js'
+import { PROMOTION_DAYS } from '../settings/settings.validation.js'
+import Store, { STORE_STATUSES } from '../stores/store.model.js'
+import { toStoreView } from '../stores/stores.routes.js'
 
 const router = Router()
 router.use(authenticate, authorize('admin'))
@@ -122,7 +129,6 @@ router.post('/listings/:id/hide', asyncHandler(async (req, res) => {
 }))
 
 /* ---------- Promotions ---------- */
-const FEATURE_DAYS = [3, 7, 14, 30]
 const DAY_MS = 24 * 60 * 60 * 1000
 
 router.get('/promotions', asyncHandler(async (req, res) => {
@@ -130,10 +136,79 @@ router.get('/promotions', asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, await toListingViews(docs)))
 }))
 
-// Free promotion by the team; paid featured ads come later with a payment gateway
+// Paid promotions bought by sellers through Stripe; pending checkouts are hidden unless asked for
+router.get('/payments', asyncHandler(async (req, res) => {
+  const filter = PAYMENT_STATUSES.includes(req.query.status) ? { status: req.query.status } : { status: { $ne: 'pending' } }
+  const pagination = getPagination(req.query, 20)
+  const [items, total] = await Promise.all([
+    Payment.find(filter).sort({ createdAt: -1 }).skip(pagination.skip).limit(pagination.pageSize)
+      .populate('user', 'name email').populate('listing', 'title').lean(),
+    Payment.countDocuments(filter),
+  ])
+  res.json(new ApiResponse(200, paginated(items.map(toPaymentView), total, pagination)))
+}))
+
+router.post('/payments/:id/approve', asyncHandler(async (req, res) => {
+  const payment = await approvePromotion(req.params.id, req.user.id)
+  await logAction(req, { action: 'promotion_approved', listing: payment.listing, reason: `${payment.days} days, invoice ${payment.invoiceNumber}`, previousStatus: 'paid', newStatus: 'approved' })
+  res.json(new ApiResponse(200, toPaymentView(payment), 'Promotion approved, the ad is featured'))
+}))
+
+router.post('/payments/:id/reject', asyncHandler(async (req, res) => {
+  const reason = toText(req.body.reason).slice(0, 300)
+  if (reason.length < 5) throw ApiError.validation({ reason: 'Tell the seller why, in a few words' })
+  const payment = await rejectPromotion(req.params.id, req.user.id, reason)
+  await logAction(req, { action: 'promotion_rejected', listing: payment.listing, reason, previousStatus: 'paid', newStatus: 'refunded' })
+  res.json(new ApiResponse(200, toPaymentView(payment), 'Promotion rejected and refunded'))
+}))
+
+/* ---------- Business stores ---------- */
+router.get('/stores', asyncHandler(async (req, res) => {
+  const filter = STORE_STATUSES.includes(req.query.status) ? { status: req.query.status } : {}
+  const q = toText(req.query.q)
+  if (q) filter.$or = [{ name: { $regex: escapeRegex(q), $options: 'i' } }, { commercialRegistration: q }]
+  const pagination = getPagination(req.query, 20)
+  const [stores, total] = await Promise.all([
+    Store.find(filter).sort({ status: 1, createdAt: -1 }).skip(pagination.skip).limit(pagination.pageSize).populate('owner', 'name email').lean(),
+    Store.countDocuments(filter),
+  ])
+  const items = stores.map((s) => ({ ...toStoreView({ ...s, owner: s.owner?._id ?? s.owner }), owner: s.owner?.name ? { id: s.owner._id.toString(), name: s.owner.name, email: s.owner.email } : null }))
+  res.json(new ApiResponse(200, paginated(items, total, pagination)))
+}))
+
+const STORE_DECISIONS = {
+  verify: { from: ['pending', 'rejected', 'suspended'], to: 'verified', action: 'store_verified', title: 'Your store is verified', needsReason: false },
+  reject: { from: ['pending'], to: 'rejected', action: 'store_rejected', title: 'Your store needs changes', needsReason: true },
+  suspend: { from: ['verified'], to: 'suspended', action: 'store_suspended', title: 'Your store has been suspended', needsReason: true },
+}
+
+router.post('/stores/:id/:decision', asyncHandler(async (req, res) => {
+  const decision = STORE_DECISIONS[req.params.decision]
+  if (!decision || !isValidObjectId(req.params.id)) throw ApiError.notFound('Not found')
+  const reason = toText(req.body.reason).slice(0, 300)
+  if (decision.needsReason && reason.length < 5) throw ApiError.validation({ reason: 'Tell the seller why, in a few words' })
+
+  const store = await Store.findById(req.params.id)
+  if (!store) throw ApiError.notFound('This store could not be found')
+  if (!decision.from.includes(store.status)) throw new ApiError(409, `A ${store.status} store cannot be changed this way`)
+
+  const previousStatus = store.status
+  store.set({ status: decision.to, reviewNote: reason || null, verifiedAt: decision.to === 'verified' ? new Date() : store.verifiedAt })
+  await store.save()
+  await logAction(req, { action: decision.action, user: store.owner, reason: reason || `Store "${store.name}"`, previousStatus, newStatus: decision.to })
+  await notify(store.owner, {
+    type: 'system',
+    title: decision.title,
+    body: decision.to === 'verified' ? `"${store.name}" now shows a Verified business badge.` : reason,
+    link: '/account/store',
+  })
+  res.json(new ApiResponse(200, toStoreView(store)))
+}))
+
+// Free promotion by the team
 router.post('/listings/:id/feature', asyncHandler(async (req, res) => {
   const days = Number(req.body.days)
-  if (!FEATURE_DAYS.includes(days)) throw ApiError.validation({ days: `Choose ${FEATURE_DAYS.join(', ')} days` })
+  if (!PROMOTION_DAYS.includes(days)) throw ApiError.validation({ days: `Choose ${PROMOTION_DAYS.join(', ')} days` })
   const listing = await Listing.findOne({ _id: req.params.id, ...PUBLIC_FILTER })
   if (!listing) throw new ApiError(409, 'Only live, available ads can be featured')
 
@@ -161,7 +236,8 @@ router.delete('/listings/:id/feature', asyncHandler(async (req, res) => {
 router.get('/users', asyncHandler(async (req, res) => {
   const filter = {}
   if (['user', 'admin'].includes(req.query.role)) filter.role = req.query.role
-  if (['pending', 'active', 'suspended'].includes(req.query.status)) filter.status = req.query.status
+  if (['pending', 'active', 'suspended', 'deleted'].includes(req.query.status)) filter.status = req.query.status
+  if (req.query.deletion === 'requested') filter.deletionRequestedAt = { $type: 'date' }
   if (['buyer', 'seller'].includes(req.query.accountType)) filter.accountType = req.query.accountType
   const q = toText(req.query.q).slice(0, 100)
   if (q) {
@@ -213,6 +289,7 @@ router.patch('/users/:id/status', asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id)
   if (!user) throw ApiError.notFound('User not found')
   if (user.role === 'admin') throw new ApiError(409, 'Admin accounts cannot be suspended here')
+  if (user.status === 'deleted') throw new ApiError(409, 'This account has been deleted')
   if (user.status === status) throw new ApiError(409, `This account is already ${status}`)
 
   const previousStatus = user.status
@@ -225,6 +302,21 @@ router.patch('/users/:id/status', asyncHandler(async (req, res) => {
     disconnectUser(user.id)
   }
   res.json(new ApiResponse(200, user, status === 'suspended' ? 'User suspended' : 'User reactivated'))
+}))
+
+// Permanent: personal details, ads, photos and chat messages are erased
+router.post('/users/:id/delete', asyncHandler(async (req, res) => {
+  const reason = toText(req.body.reason).slice(0, 500)
+  if (reason.length < 5) throw ApiError.validation({ reason: 'Add a short reason' })
+  const user = await User.findById(req.params.id)
+  if (!user) throw ApiError.notFound('User not found')
+  if (user.role === 'admin') throw new ApiError(409, 'Admin accounts cannot be deleted here')
+  if (user.status === 'deleted') throw new ApiError(409, 'This account is already deleted')
+
+  const previousStatus = user.status
+  await deleteAccount(user)
+  await logAction(req, { action: 'user_deleted', user: user._id, reason, previousStatus, newStatus: 'deleted' })
+  res.json(new ApiResponse(200, await User.findById(user._id), 'Account deleted'))
 }))
 
 /* ---------- Moderation history ---------- */

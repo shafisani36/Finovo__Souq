@@ -1,5 +1,6 @@
 import { Heart } from 'lucide-react';
 import { useSavedListings } from '../../features/saved/saved-context';
+import { t } from '../../i18n';
 
 export function SaveButton({ listingId, className }: { listingId: string; className?: string }) {
   const { isSaved, toggle, pendingIds } = useSavedListings();
@@ -9,7 +10,7 @@ export function SaveButton({ listingId, className }: { listingId: string; classN
       type="button"
       className={['icon-btn', 'save-btn', saved && 'save-btn--active', className].filter(Boolean).join(' ')}
       aria-pressed={saved}
-      aria-label={saved ? 'Remove from saved ads' : 'Save ad'}
+      aria-label={saved ? t('Remove from saved ads') : t('Save ad')}
       disabled={pendingIds.has(listingId)}
       onClick={(event) => {
         event.preventDefault();

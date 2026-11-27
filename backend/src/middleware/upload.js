@@ -8,4 +8,5 @@ const memoryUpload = (fileSize, files) => multer({ storage: multer.memoryStorage
 // 20 is the highest limit an admin can set; the route checks the current setting
 export const listingPhotosUpload = memoryUpload(8 * MB, 20).array('photos', 20)
 export const avatarUpload = memoryUpload(5 * MB, 1).single('avatar')
+export const storeLogoUpload = memoryUpload(5 * MB, 1).single('logo')
 export const chatAttachmentUpload = memoryUpload(8 * MB, 1).single('file')

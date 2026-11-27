@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { AlertTriangle, Inbox } from 'lucide-react';
 import { getErrorMessage } from '../../api/errors';
 import { Button } from './Button';
+import { t } from '../../i18n';
 
 export { LoadingState, SkeletonBlock } from './LoadingState';
 
@@ -31,7 +32,7 @@ export function ErrorState({ error, onRetry, title = 'We could not load this' }:
       </div>
       <h3 className="state__title">{title}</h3>
       <p className="state__text">{getErrorMessage(error)}</p>
-      {onRetry && <Button onClick={onRetry}>Try again</Button>}
+      {onRetry && <Button onClick={onRetry}>{t('Try again')}</Button>}
     </div>
   );
 }

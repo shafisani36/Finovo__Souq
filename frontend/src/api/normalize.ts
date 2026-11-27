@@ -13,13 +13,15 @@ export interface BackendUser {
   isEmailVerified?: boolean;
   city?: string | null;
   avatarUrl?: string | null;
+  deletionRequestedAt?: string | null;
+  deletionReason?: string | null;
   createdAt?: string;
 }
 
 /** Converts a backend user into the shape the screens use; unknown roles fall back to the least privileged one */
 export function normalizeUser(raw: BackendUser): User {
   const role: UserRole = raw.role === 'admin' ? 'admin' : 'user';
-  const status: UserStatus = raw.status === 'suspended' || raw.status === 'pending' ? raw.status : 'active';
+  const status: UserStatus = raw.status === 'suspended' || raw.status === 'pending' || raw.status === 'deleted' ? raw.status : 'active';
   return {
     id: String(raw._id ?? raw.id ?? ''),
     name: raw.name ?? '',
@@ -31,6 +33,8 @@ export function normalizeUser(raw: BackendUser): User {
     isEmailVerified: Boolean(raw.isEmailVerified),
     city: raw.city ?? null,
     avatarUrl: raw.avatarUrl ?? null,
+    deletionRequestedAt: raw.deletionRequestedAt ?? null,
+    deletionReason: raw.deletionReason ?? null,
     createdAt: raw.createdAt ?? new Date().toISOString(),
   };
 }

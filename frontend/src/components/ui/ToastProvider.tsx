@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
 import { ToastContext, type ToastTone } from './toast-context';
+import { t } from '../../i18n';
 
 interface ToastItem {
   id: number;
@@ -41,7 +42,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <p className="toast__title">{toast.title}</p>
                 {toast.message && <p className="text-secondary">{toast.message}</p>}
               </div>
-              <button type="button" className="icon-btn icon-btn--sm" onClick={() => dismiss(toast.id)} aria-label="Dismiss">
+              <button type="button" className="icon-btn icon-btn--sm" onClick={() => dismiss(toast.id)} aria-label={t('Dismiss')}>
                 <X size={14} />
               </button>
             </div>

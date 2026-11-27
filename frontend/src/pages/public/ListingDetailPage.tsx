@@ -1,8 +1,9 @@
 import { Fragment, useState } from 'react';
-import { BadgeCheck, CalendarDays, ChevronRight, Eye, Flag, Info, MapPin, MessageSquare, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { CalendarDays, ChevronRight, Eye, Flag, Info, MapPin, MessageSquare, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getErrorMessage } from '../../api/errors';
 import { ListingImage } from '../../components/listings/ListingImage';
+import { SellerTrustFacts } from '../../components/listings/SellerTrustFacts';
 import { SimilarAds } from '../../components/listings/SimilarAds';
 import { SaveButton } from '../../components/listings/SaveButton';
 import { Avatar } from '../../components/ui/Avatar';
@@ -21,7 +22,8 @@ import { conversationsService } from '../../services/conversations.service';
 import { listingsService } from '../../services/listings.service';
 import { ApiError } from '../../api/errors';
 import { REPORT_REASONS, type Listing, type ReportReason } from '../../types';
-import { formatDate, formatNumber, formatPrice, formatRelative, LISTING_TYPE_LABELS } from '../../utils/format';
+import { formatNumber, formatPrice, formatRelative, LISTING_TYPE_LABELS } from '../../utils/format';
+import { t } from '../../i18n';
 
 function Gallery({ listing }: { listing: Listing }) {
   const photos = [...listing.photos].sort((a, b) => a.position - b.position);
@@ -33,9 +35,19 @@ function Gallery({ listing }: { listing: Listing }) {
         <ListingImage listing={{ ...listing, photos: current ? [current] : [] }} iconSize={96} />
       </div>
       {photos.length > 1 && (
-        <div className="gallery__thumbs" role="tablist" aria-label="Photos">
+        <div className="gallery__thumbs" role="tablist" aria-label={t('Photos')}>
           {photos.map((photo, i) => (
-            <button key={photo.id} type="button" role="tab" aria-selected={i === index} className="gallery__thumb" onClick={() => setIndex(i)} aria-label={`Photo ${i + 1}`}>
+            <button
+              key={photo.id}
+              type="button"
+              role="tab"
+              aria-selected={i === index}
+              className="gallery__thumb"
+              onClick={() => setIndex(i)}
+              aria-label={t('Photo {i}', {
+                i: i + 1,
+              })}
+            >
               <img src={photo.url} alt="" />
             </button>
           ))}
@@ -60,13 +72,13 @@ export function ListingDetailPage() {
   const [reporting, setReporting] = useState(false);
   useDocumentTitle(listing.data?.title ?? 'Ad details');
 
-  if (listing.isLoading) return <LoadingState label="Loading ad..." />;
+  if (listing.isLoading) return <LoadingState label={t('Loading ad...')} />;
   if (listing.error || !listing.data) {
     if (listing.error instanceof ApiError && listing.error.isNotFound) {
       return (
         <div className="container section">
           <div className="card">
-            <EmptyState title="This ad is not available" text="It may have been sold, withdrawn or removed." action={<ButtonLink to="/search">Browse other ads</ButtonLink>} />
+            <EmptyState title={t('This ad is not available')} text={t('It may have been sold, withdrawn or removed.')} action={<ButtonLink to="/search">{t('Browse other ads')}</ButtonLink>} />
           </div>
         </div>
       );
@@ -95,7 +107,7 @@ export function ListingDetailPage() {
       const conversation = await conversationsService.start(ad.id);
       navigate(rolePath(user.role, `messages?c=${conversation.id}`));
     } catch (error) {
-      toast.show({ title: 'Could not open chat', message: getErrorMessage(error), tone: 'error' });
+      toast.show({ title: t('Could not open chat'), message: getErrorMessage(error), tone: 'error' });
     } finally {
       setContacting(false);
     }
@@ -103,13 +115,13 @@ export function ListingDetailPage() {
 
   const submitReport = async () => {
     if (!reportReason) {
-      setReportError('Choose a reason.');
+      setReportError(t('Choose a reason.'));
       return;
     }
     setReporting(true);
     try {
       await listingsService.report(ad.id, reportReason, reportDetails.trim());
-      toast.show({ title: 'Report sent', message: 'Thank you. Our team will review this ad.' });
+      toast.show({ title: t('Report sent'), message: t('Thank you. Our team will review this ad.') });
       setReportOpen(false);
       setReportReason('');
       setReportDetails('');
@@ -126,15 +138,15 @@ export function ListingDetailPage() {
         .filter((f) => ad.attributes[f.fieldKey] !== undefined && ad.attributes[f.fieldKey] !== '')
         .map((f) => {
           const raw = ad.attributes[f.fieldKey];
-          const value = f.inputType === 'number' && f.fieldKey !== 'year' ? formatNumber(Number(raw)) : String(raw);
+          const value = f.inputType === 'number' && f.fieldKey !== 'year' ? formatNumber(Number(raw)) : t(String(raw));
           return { label: f.label, value: f.unit ? `${value} ${f.unit}` : value };
         })
     : Object.entries(ad.attributes).map(([label, value]) => ({ label, value: String(value) }));
 
   return (
     <div className="container detail">
-      <nav className="breadcrumb" aria-label="Breadcrumb">
-        <Link to="/">Home</Link>
+      <nav className="breadcrumb" aria-label={t('Breadcrumb')}>
+        <Link to="/">{t('Home')}</Link>
         <ChevronRight size={14} aria-hidden="true" />
         {ad.categoryTrail.map((c) => (
           <Fragment key={c.id}>
@@ -149,14 +161,20 @@ export function ListingDetailPage() {
         <div className="alert alert--warning" style={{ marginBottom: 'var(--space-5)' }}>
           <Info size={16} />
           <div>
-            Only you{isAdmin ? ' (admin)' : ''} can see this ad. Status: <ListingStatusBadge status={ad.status} />
-            {ad.moderationNote && <p style={{ marginTop: 6 }}>Note from moderator: {ad.moderationNote}</p>}
+            {t('Only you')}
+            {isAdmin ? t(' (admin)') : ''} {t('can see this ad. Status:')} <ListingStatusBadge status={ad.status} />
+            {ad.moderationNote && (
+              <p style={{ marginTop: 6 }}>
+                {t('Note from moderator:')} {ad.moderationNote}
+              </p>
+            )}
           </div>
         </div>
       )}
       {ad.status === 'published' && ad.availability !== 'available' && (
         <div className="alert" style={{ marginBottom: 'var(--space-5)' }}>
-          <Info size={16} /> This ad has been marked as {ad.availability}. It is kept here for reference.
+          <Info size={16} /> {t('This ad has been marked as')} {ad.availability}
+          {t('. It is kept here for reference.')}
         </div>
       )}
 
@@ -165,10 +183,10 @@ export function ListingDetailPage() {
           <Gallery listing={ad} />
 
           <section className="card">
-            <h2 className="card-title">Details</h2>
+            <h2 className="card-title">{t('Details')}</h2>
             <dl className="spec-grid">
               <div>
-                <dt>Type</dt>
+                <dt>{t('Type')}</dt>
                 <dd>{LISTING_TYPE_LABELS[ad.listingType]}</dd>
               </div>
               {attributeRows.map((row) => (
@@ -178,16 +196,16 @@ export function ListingDetailPage() {
                 </div>
               ))}
               <div>
-                <dt>Location</dt>
+                <dt>{t('Location')}</dt>
                 <dd>
-                  {ad.district}, {ad.city}
+                  {ad.district}, {t(ad.city)}
                 </dd>
               </div>
             </dl>
           </section>
 
           <section className="card">
-            <h2 className="card-title">Description</h2>
+            <h2 className="card-title">{t('Description')}</h2>
             <p className="detail__description">{ad.description}</p>
           </section>
         </div>
@@ -200,30 +218,38 @@ export function ListingDetailPage() {
             </div>
             <h1 className="detail__title">{ad.title}</h1>
             <p className="detail__price tabular">{formatPrice(ad.price, ad.listingType)}</p>
-            {ad.listingType === 'service' && ad.attributes.priceType === 'Starting from' && <p className="text-muted">Starting price</p>}
+            {ad.listingType === 'service' && ad.attributes.priceType === 'Starting from' && <p className="text-muted">{t('Starting price')}</p>}
             <ul className="detail__meta">
               <li>
-                <MapPin size={15} /> {ad.district}, {ad.city}
+                <MapPin size={15} /> {ad.district}, {t(ad.city)}
               </li>
               <li>
-                <CalendarDays size={15} /> Posted {formatRelative(ad.publishedAt ?? ad.createdAt)}
+                <CalendarDays size={15} /> {t('Posted')} {formatRelative(ad.publishedAt ?? ad.createdAt)}
               </li>
               <li>
-                <Eye size={15} /> {formatNumber(ad.views)} views
+                <Eye size={15} /> {formatNumber(ad.views)} {t('views')}
               </li>
             </ul>
 
             {isOwner ? (
               <ButtonLink to="/account/listings" variant="primary" block>
-                Manage in my ads
+                {t('Manage in my ads')}
               </ButtonLink>
             ) : isAdmin ? (
               <ButtonLink to={`/admin/moderation?status=all&q=${encodeURIComponent(ad.title)}`} variant="primary" block icon={<ShieldCheck size={18} />}>
-                Open in moderation
+                {t('Open in moderation')}
               </ButtonLink>
             ) : isAvailable ? (
-              <Button variant="primary" block size="lg" icon={<MessageSquare size={18} />} isLoading={contacting} onClick={canMessage || !user ? contactSeller : undefined} disabled={Boolean(user) && !canMessage}>
-                {user ? 'Message seller' : 'Sign in to message seller'}
+              <Button
+                variant="primary"
+                block
+                size="lg"
+                icon={<MessageSquare size={18} />}
+                isLoading={contacting}
+                onClick={canMessage || !user ? contactSeller : undefined}
+                disabled={Boolean(user) && !canMessage}
+              >
+                {user ? t('Message seller') : t('Sign in to message seller')}
               </Button>
             ) : null}
           </div>
@@ -235,42 +261,35 @@ export function ListingDetailPage() {
                 <Link to={`/sellers/${ad.seller.id}`} className="seller-card__name">
                   {ad.seller.name}
                 </Link>
-                <p className="text-muted">Member since {formatDate(ad.seller.memberSince)}</p>
-                {ad.seller.phoneVerified && (
-                  <span className="badge badge--success" style={{ marginTop: 6 }}>
-                    <BadgeCheck size={12} /> Phone verified
-                  </span>
-                )}
+                {ad.seller.city && <p className="text-muted">{t(ad.seller.city)}</p>}
               </div>
             </div>
-            <p className="text-muted" style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)' }}>
-              {formatNumber(ad.seller.activeListings)} live {ad.seller.activeListings === 1 ? 'ad' : 'ads'}. A verified phone number confirms the seller can receive codes; it is not an identity check.
-            </p>
+            <SellerTrustFacts seller={ad.seller} />
             <ButtonLink to={`/sellers/${ad.seller.id}`} block className="seller-card__all">
-              View all ads from this seller
+              {t('View all ads from this seller')}
             </ButtonLink>
           </div>
 
           <div className="card safety-card">
             <h2 className="card-title">
-              <ShieldAlert size={18} /> Stay safe
+              <ShieldAlert size={18} /> {t('Stay safe')}
             </h2>
             <ul>
-              <li>Meet in a busy public place.</li>
-              <li>Check the item and documents before paying.</li>
-              <li>Never send a deposit or pay before viewing.</li>
+              <li>{t('Meet in a busy public place.')}</li>
+              <li>{t('Check the item and documents before paying.')}</li>
+              <li>{t('Never send a deposit or pay before viewing.')}</li>
             </ul>
             <Link to="/safety" className="link safety-card__more">
-              Read all safety tips
+              {t('Read all safety tips')}
             </Link>
             {canReport && (
               <Button variant="ghost" size="sm" icon={<Flag size={15} />} onClick={() => setReportOpen(true)}>
-                Report this ad
+                {t('Report this ad')}
               </Button>
             )}
             {!user && (
               <Button variant="ghost" size="sm" icon={<Flag size={15} />} onClick={loginFirst}>
-                Sign in to report this ad
+                {t('Sign in to report this ad')}
               </Button>
             )}
           </div>
@@ -281,32 +300,38 @@ export function ListingDetailPage() {
 
       <Modal
         open={reportOpen}
-        title="Report this ad"
-        description="Tell us what is wrong. Reports are private; the seller will not see your name."
+        title={t('Report this ad')}
+        description={t('Tell us what is wrong. Reports are private; the seller will not see your name.')}
         onClose={() => setReportOpen(false)}
         footer={
           <>
-            <Button onClick={() => setReportOpen(false)}>Cancel</Button>
+            <Button onClick={() => setReportOpen(false)}>{t('Cancel')}</Button>
             <Button variant="primary" isLoading={reporting} onClick={submitReport}>
-              Send report
+              {t('Send report')}
             </Button>
           </>
         }
       >
         <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
           <SelectField
-            label="Reason"
+            label={t('Reason')}
             required
             value={reportReason}
             onChange={(reason) => {
               setReportReason(reason as ReportReason);
               setReportError('');
             }}
-            placeholder="Choose a reason"
-            options={REPORT_REASONS.map((r) => ({ value: r, label: r }))}
+            placeholder={t('Choose a reason')}
+            options={REPORT_REASONS.map((r) => ({ value: r, label: t(r) }))}
             error={reportError}
           />
-          <TextareaField label="Details (optional)" value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} maxLength={1000} placeholder="Anything that helps our team review this ad" />
+          <TextareaField
+            label={t('Details (optional)')}
+            value={reportDetails}
+            onChange={(e) => setReportDetails(e.target.value)}
+            maxLength={1000}
+            placeholder={t('Anything that helps our team review this ad')}
+          />
         </div>
       </Modal>
     </div>

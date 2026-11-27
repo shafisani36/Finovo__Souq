@@ -1,0 +1,93 @@
+/* ---------- Arabic and right-to-left ----------
+ * Layout already uses logical properties (margin-inline, inset-inline...), so the browser mirrors
+ * most of the page by itself when <html dir="rtl">. These rules handle what logical properties cannot.
+ */
+html[lang='ar'] {
+  --font-sans: var(--font-arabic);
+}
+
+/* Arabic letters join, so extra letter spacing breaks words apart */
+html[lang='ar'] body * {
+  letter-spacing: normal !important;
+}
+
+/* Icons that point forward or back follow the reading direction */
+[dir='rtl'] .lucide-chevron-right,
+[dir='rtl'] .lucide-chevron-left,
+[dir='rtl'] .lucide-arrow-right,
+[dir='rtl'] .lucide-arrow-left,
+[dir='rtl'] .lucide-arrow-up-right,
+[dir='rtl'] .lucide-send,
+[dir='rtl'] .lucide-log-out,
+[dir='rtl'] .lucide-log-in,
+[dir='rtl'] .lucide-undo-2 {
+  transform: scaleX(-1);
+}
+
+/* Chat bubbles: the small corner sits on the sender's side */
+[dir='rtl'] .bubble {
+  border-radius: 16px 16px 4px 16px;
+}
+
+[dir='rtl'] .bubble--mine {
+  border-radius: 16px 16px 16px 4px;
+}
+
+[dir='rtl'] .phone__bubble {
+  border-radius: 12px 12px 4px 12px;
+}
+
+[dir='rtl'] .phone__bubble--me {
+  border-radius: 12px 12px 12px 4px;
+}
+
+[dir='rtl'] .stat-join:hover .stat-join__arrow {
+  transform: translateX(-3px);
+}
+
+/* Decorative cards on the sign-in page */
+[dir='rtl'] .auth-mock--chart {
+  left: auto;
+  right: 12%;
+}
+
+[dir='rtl'] .auth-mock--listing {
+  right: auto;
+  left: 6%;
+}
+
+[dir='rtl'] .auth-mock--message {
+  left: auto;
+  right: 6%;
+}
+
+@media (max-width: 1180px) {
+  [dir='rtl'] .auth-mock--chart {
+    left: auto;
+    right: 4%;
+  }
+
+  [dir='rtl'] .auth-mock--listing {
+    right: auto;
+    left: 2%;
+  }
+}
+
+/* Mobile filter drawer slides in from the reading side */
+@media (max-width: 860px) {
+  [dir='rtl'] .browse__filters {
+    transform: translateX(105%);
+  }
+
+  [dir='rtl'] .browse__filters--open {
+    transform: translateX(0);
+  }
+}
+
+/* Numbers, phone numbers, prices and codes keep their left-to-right order inside Arabic text */
+[dir='rtl'] .tabular,
+[dir='rtl'] input[type='tel'],
+[dir='rtl'] input[inputmode='numeric'],
+[dir='rtl'] input[type='email'] {
+  unicode-bidi: plaintext;
+}

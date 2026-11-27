@@ -24,11 +24,12 @@ import { savedService } from '../../services/saved.service';
 import type { Category, CategoryField, ListingSearchParams, ListingSort } from '../../types';
 import { childrenOf, filterKeysOf, trailOf } from '../../utils/categories';
 import { formatNumber, formatPrice } from '../../utils/format';
+import { t, tn } from '../../i18n';
 
 const SORT_OPTIONS: { value: ListingSort; label: string }[] = [
-  { value: 'newest', label: 'Newest first' },
-  { value: 'price_asc', label: 'Price: low to high' },
-  { value: 'price_desc', label: 'Price: high to low' },
+  { value: 'newest', label: t('Newest first') },
+  { value: 'price_asc', label: t('Price: low to high') },
+  { value: 'price_desc', label: t('Price: high to low') },
 ];
 
 function toNumber(value: string | null): number | undefined {
@@ -62,16 +63,17 @@ interface FilterValues {
 
 /** Filter label for an applied detail filter, such as "Year from 2018" or "Toyota" */
 function detailPillLabel(field: CategoryField, key: string, value: string): string {
-  if (key.endsWith('_min')) return `${field.label} from ${formatNumber(Number(value))}${field.unit ? ` ${field.unit}` : ''}`;
-  if (key.endsWith('_max')) return `${field.label} up to ${formatNumber(Number(value))}${field.unit ? ` ${field.unit}` : ''}`;
-  return value;
+  const amount = `${formatNumber(Number(value))}${field.unit ? ` ${t(field.unit)}` : ''}`;
+  if (key.endsWith('_min')) return t('{label} from {amount}', { label: t(field.label), amount });
+  if (key.endsWith('_max')) return t('{label} up to {amount}', { label: t(field.label), amount });
+  return t(value);
 }
 
 const PRICE_PRESETS: { label: string; min: string; max: string }[] = [
-  { label: 'Under 1,000', min: '', max: '1000' },
+  { label: t('Under 1,000'), min: '', max: '1000' },
   { label: '1,000 - 10,000', min: '1000', max: '10000' },
   { label: '10,000 - 100,000', min: '10000', max: '100000' },
-  { label: 'Over 100,000', min: '100000', max: '' },
+  { label: t('Over 100,000'), min: '100000', max: '' },
 ];
 
 interface FilterPanelProps {
@@ -94,7 +96,7 @@ function FilterPanel({ initial, fields, hasFilters, onApply, onClear, onClose }:
     const min = toNumber(draft.minPrice);
     const max = toNumber(draft.maxPrice);
     if (min !== undefined && max !== undefined && min > max) {
-      setPriceError('Minimum price cannot be higher than maximum price.');
+      setPriceError(t('Minimum price cannot be higher than maximum price.'));
       return;
     }
     setPriceError('');
@@ -104,46 +106,46 @@ function FilterPanel({ initial, fields, hasFilters, onApply, onClear, onClose }:
   const setDetail = (key: string, value: string) => setDraft({ ...draft, details: { ...draft.details, [key]: value } });
 
   return (
-    <form className="filters" onSubmit={submit} aria-label="Filters">
+    <form className="filters" onSubmit={submit} aria-label={t('Filters')}>
       <div className="filters__head">
         <span className="filters__head-icon" aria-hidden="true">
           <SlidersHorizontal size={16} />
         </span>
-        <h2 className="filters__title">Filters</h2>
+        <h2 className="filters__title">{t('Filters')}</h2>
         {hasFilters && (
           <button type="button" className="filters__clear" onClick={onClear}>
-            Clear all
+            {t('Clear all')}
           </button>
         )}
-        <button type="button" className="icon-btn icon-btn--sm show-md" onClick={onClose} aria-label="Close filters">
+        <button type="button" className="icon-btn icon-btn--sm show-md" onClick={onClose} aria-label={t('Close filters')}>
           <X size={16} />
         </button>
       </div>
 
       <div className="filters__group">
         <p className="filters__label">
-          <MapPin size={15} aria-hidden="true" /> Location
+          <MapPin size={15} aria-hidden="true" /> {t('Location')}
         </p>
         <Select
           value={draft.city}
           onChange={(city) => setDraft({ ...draft, city })}
-          placeholder="All cities"
-          options={[{ value: '', label: 'All cities' }, ...SAUDI_CITIES.map((c) => ({ value: c, label: c }))]}
-          aria-label="City"
+          placeholder={t('All cities')}
+          options={[{ value: '', label: t('All cities') }, ...SAUDI_CITIES.map((c) => ({ value: c, label: t(c) }))]}
+          aria-label={t('City')}
         />
       </div>
 
       <fieldset className="filters__group">
         <legend className="filters__label">
-          <Wallet size={15} aria-hidden="true" /> Price (SAR)
+          <Wallet size={15} aria-hidden="true" /> {t('Price (SAR)')}
         </legend>
         <div className="filters__price-row">
           <InputField
             type="number"
             inputMode="numeric"
             min={0}
-            placeholder="Min"
-            aria-label="Minimum price"
+            placeholder={t('Min')}
+            aria-label={t('Minimum price')}
             value={draft.minPrice}
             onChange={(e) => setDraft({ ...draft, minPrice: e.target.value })}
           />
@@ -152,8 +154,8 @@ function FilterPanel({ initial, fields, hasFilters, onApply, onClear, onClose }:
             type="number"
             inputMode="numeric"
             min={0}
-            placeholder="Max"
-            aria-label="Maximum price"
+            placeholder={t('Max')}
+            aria-label={t('Maximum price')}
             value={draft.maxPrice}
             onChange={(e) => setDraft({ ...draft, maxPrice: e.target.value })}
           />
@@ -196,8 +198,18 @@ function FilterPanel({ initial, fields, hasFilters, onApply, onClear, onClose }:
             <Select
               value={draft.details[`f_${field.fieldKey}`] ?? ''}
               onChange={(value) => setDetail(`f_${field.fieldKey}`, value)}
-              placeholder={`Any ${field.label.toLowerCase()}`}
-              options={[{ value: '', label: `Any ${field.label.toLowerCase()}` }, ...(field.options ?? []).map((o) => ({ value: o, label: o }))]}
+              placeholder={t('Any {value}', {
+                value: field.label.toLowerCase(),
+              })}
+              options={[
+                {
+                  value: '',
+                  label: t('Any {value}', {
+                    value: field.label.toLowerCase(),
+                  }),
+                },
+                ...(field.options ?? []).map((o) => ({ value: o, label: t(o) })),
+              ]}
               aria-label={field.label}
             />
           </div>
@@ -212,8 +224,10 @@ function FilterPanel({ initial, fields, hasFilters, onApply, onClear, onClose }:
                 type="number"
                 inputMode="numeric"
                 min={field.min ?? 0}
-                placeholder="Min"
-                aria-label={`Minimum ${field.label.toLowerCase()}`}
+                placeholder={t('Min')}
+                aria-label={t('Minimum {value}', {
+                  value: field.label.toLowerCase(),
+                })}
                 value={draft.details[`f_${field.fieldKey}_min`] ?? ''}
                 onChange={(e) => setDetail(`f_${field.fieldKey}_min`, e.target.value)}
               />
@@ -222,8 +236,10 @@ function FilterPanel({ initial, fields, hasFilters, onApply, onClear, onClose }:
                 type="number"
                 inputMode="numeric"
                 min={field.min ?? 0}
-                placeholder="Max"
-                aria-label={`Maximum ${field.label.toLowerCase()}`}
+                placeholder={t('Max')}
+                aria-label={t('Maximum {value}', {
+                  value: field.label.toLowerCase(),
+                })}
                 value={draft.details[`f_${field.fieldKey}_max`] ?? ''}
                 onChange={(e) => setDetail(`f_${field.fieldKey}_max`, e.target.value)}
               />
@@ -233,7 +249,7 @@ function FilterPanel({ initial, fields, hasFilters, onApply, onClear, onClose }:
       )}
 
       <Button type="submit" variant="primary" block>
-        Apply filters
+        {t('Apply filters')}
       </Button>
     </form>
   );
@@ -254,7 +270,15 @@ export function BrowsePage() {
   // Chips show the next level down; on a final category they show its siblings so the visitor can switch
   const chipParent: Category | undefined = activeCategory?.isLeaf ? allCategories.find((c) => c.id === activeCategory.parentId) : activeCategory;
   const chipCategories = childrenOf(allCategories, chipParent?.id ?? null);
-  useDocumentTitle(activeCategory ? activeCategory.name : params.q ? `Results for "${params.q}"` : 'All ads');
+  useDocumentTitle(
+    activeCategory
+      ? activeCategory.name
+      : params.q
+        ? t('Results for "{q}"', {
+            q: params.q,
+          })
+        : t('All ads'),
+  );
 
   const results = useAsync(() => listingsService.search({ ...params, pageSize: DEFAULT_PAGE_SIZE }), [searchParams.toString()]);
 
@@ -286,15 +310,22 @@ export function BrowsePage() {
   // Removable pills for everything that narrows the results
   const activePills = [
     params.q && { key: 'q', label: `"${params.q}"` },
-    params.city && { key: 'city', label: params.city },
+    params.city && { key: 'city', label: t(params.city) },
     (params.minPrice !== undefined || params.maxPrice !== undefined) && {
       key: 'price',
       label:
         params.minPrice !== undefined && params.maxPrice !== undefined
-          ? `SAR ${formatNumber(params.minPrice)} - ${formatNumber(params.maxPrice)}`
+          ? t('SAR {minPrice} - {maxPrice}', {
+              minPrice: formatNumber(params.minPrice),
+              maxPrice: formatNumber(params.maxPrice),
+            })
           : params.minPrice !== undefined
-            ? `From ${formatPrice(params.minPrice, 'sale')}`
-            : `Up to ${formatPrice(params.maxPrice ?? 0, 'sale')}`,
+            ? t('From {minPrice}', {
+                minPrice: formatPrice(params.minPrice, 'sale'),
+              })
+            : t('Up to {maxPrice}', {
+                maxPrice: formatPrice(params.maxPrice ?? 0, 'sale'),
+              }),
     },
     ...Object.entries(appliedDetails).map(([key, value]) => {
       const field = detailFields.find((f) => key === `f_${f.fieldKey}` || key === `f_${f.fieldKey}_min` || key === `f_${f.fieldKey}_max`);
@@ -319,7 +350,13 @@ export function BrowsePage() {
   };
 
   const totalAds = categories.data ? childrenOf(allCategories, null).reduce((sum, c) => sum + c.listingCount, 0) : undefined;
-  const title = activeCategory?.name ?? (params.q ? `Results for "${params.q}"` : 'All ads');
+  const title =
+    activeCategory?.name ??
+    (params.q
+      ? t('Results for "{q}"', {
+          q: params.q,
+        })
+      : t('All ads'));
 
   const clearAll = () => {
     setSearchParams(new URLSearchParams());
@@ -330,7 +367,7 @@ export function BrowsePage() {
   const canSaveSearch = hasPermission(user?.role, 'searches:save');
 
   const openSaveSearch = () => {
-    const parts = [params.q && `"${params.q}"`, activeCategory?.name, params.city && `in ${params.city}`].filter(Boolean);
+    const parts = [params.q && `"${params.q}"`, activeCategory?.name, params.city && t('in {city}', { city: t(params.city) })].filter(Boolean);
     setSaveLabel(parts.join(' ') || 'My search');
     setSaveOpen(true);
   };
@@ -343,13 +380,13 @@ export function BrowsePage() {
       void _page;
       await savedService.saveSearch(saveLabel.trim(), criteria);
       toast.show({
-        title: 'Search saved',
-        message: 'Find it any time in your dashboard.',
+        title: t('Search saved'),
+        message: t('Find it any time in your dashboard.'),
       });
       setSaveOpen(false);
     } catch (error) {
       toast.show({
-        title: 'Could not save search',
+        title: t('Could not save search'),
         message: getErrorMessage(error),
         tone: 'error',
       });
@@ -362,12 +399,12 @@ export function BrowsePage() {
     <>
       <section className="browse-hero" data-header-dark>
         <div className="container">
-          <nav className="page-hero__crumbs" aria-label="Breadcrumb">
-            <Link to="/">Home</Link>
+          <nav className="page-hero__crumbs" aria-label={t('Breadcrumb')}>
+            <Link to="/">{t('Home')}</Link>
             <ChevronRight size={14} aria-hidden="true" />
             {activeCategory ? (
               <>
-                <Link to={categoryLink()}>Browse ads</Link>
+                <Link to={categoryLink()}>{t('Browse ads')}</Link>
                 {activeTrail.map((c) => (
                   <Fragment key={c.id}>
                     <ChevronRight size={14} aria-hidden="true" />
@@ -376,15 +413,16 @@ export function BrowsePage() {
                 ))}
               </>
             ) : (
-              <span aria-current="page">Browse ads</span>
+              <span aria-current="page">{t('Browse ads')}</span>
             )}
           </nav>
           <div className="browse-hero__row">
             <div>
               <h1 className="browse-hero__title">{title}</h1>
               <p className="browse-hero__text">
-                {results.data ? `${formatNumber(results.data.total)} ${results.data.total === 1 ? 'ad' : 'ads'}` : 'Searching...'}
-                {params.city ? ` in ${params.city}` : ' across Saudi Arabia'}, every one checked before it went live.
+                {results.data ? tn(results.data.total, '{count} ad', '{count} ads', { count: formatNumber(results.data.total) }) : t('Searching...')}
+                {params.city ? ` ${t('in {city}', { city: t(params.city) })}` : ` ${t('across Saudi Arabia')}`}
+                {t(', every one checked before it went live.')}
               </p>
             </div>
           </div>
@@ -409,7 +447,7 @@ export function BrowsePage() {
         </div>
       </section>
 
-      <nav className="browse-cats" aria-label="Categories">
+      <nav className="browse-cats" aria-label={t('Categories')}>
         <div className="container browse-cats__row">
           {chipParent ? (
             <Link to={categoryLink(chipParent.parentId ? allCategories.find((c) => c.id === chipParent.parentId)?.slug : undefined)} className="browse-cat">
@@ -417,8 +455,8 @@ export function BrowsePage() {
                 <ArrowLeft size={18} />
               </span>
               <span>
-                <strong>Back</strong>
-                <span>{chipParent.parentId ? allCategories.find((c) => c.id === chipParent.parentId)?.name : 'All ads'}</span>
+                <strong>{t('Back')}</strong>
+                <span>{chipParent.parentId ? allCategories.find((c) => c.id === chipParent.parentId)?.name : t('All ads')}</span>
               </span>
             </Link>
           ) : null}
@@ -429,8 +467,24 @@ export function BrowsePage() {
           >
             <span className="browse-cat__icon">{chipParent ? <CategoryIcon icon={chipParent.icon} size={18} /> : <LayoutGrid size={18} />}</span>
             <span>
-              <strong>{chipParent ? `All in ${chipParent.name}` : 'All ads'}</strong>
-              {chipParent ? <span className="tabular">{formatNumber(chipParent.listingCount)} ads</span> : totalAds !== undefined && <span className="tabular">{formatNumber(totalAds)} ads</span>}
+              <strong>
+                {chipParent
+                  ? t('All in {name}', {
+                      name: chipParent.name,
+                    })
+                  : t('All ads')}
+              </strong>
+              {chipParent ? (
+                <span className="tabular">
+                  {tn(chipParent.listingCount, '{count} ad', '{count} ads', { count: formatNumber(chipParent.listingCount) })}
+                </span>
+              ) : (
+                totalAds !== undefined && (
+                  <span className="tabular">
+                    {tn(totalAds, '{count} ad', '{count} ads', { count: formatNumber(totalAds) })}
+                  </span>
+                )
+              )}
             </span>
           </Link>
           {chipCategories.map((c) => (
@@ -440,7 +494,9 @@ export function BrowsePage() {
               </span>
               <span>
                 <strong>{c.name}</strong>
-                <span className="tabular">{formatNumber(c.listingCount)} ads</span>
+                <span className="tabular">
+                  {tn(c.listingCount, '{count} ad', '{count} ads', { count: formatNumber(c.listingCount) })}
+                </span>
               </span>
             </Link>
           ))}
@@ -470,11 +526,17 @@ export function BrowsePage() {
           <section className="browse__results" aria-live="polite" aria-busy={results.isLoading}>
             <div className="browse-toolbar">
               <div className="browse-toolbar__info">
-                <strong className="tabular">{results.data ? formatNumber(results.data.total) : '–'}</strong> {results.data?.total === 1 ? 'ad found' : 'ads found'}
+                <strong className="tabular">{results.data ? formatNumber(results.data.total) : '–'}</strong> {results.data?.total === 1 ? t('ad found') : t('ads found')}
                 {activePills.map((pill) => (
                   <span key={pill.key} className="filter-pill">
                     {pill.label}
-                    <button type="button" onClick={() => removePill(pill.key)} aria-label={`Remove filter ${pill.label}`}>
+                    <button
+                      type="button"
+                      onClick={() => removePill(pill.key)}
+                      aria-label={t('Remove filter {label}', {
+                        label: pill.label,
+                      })}
+                    >
                       <X size={13} />
                     </button>
                   </span>
@@ -482,11 +544,11 @@ export function BrowsePage() {
               </div>
               <div className="browse-toolbar__actions">
                 <Button size="sm" className="show-md" icon={<SlidersHorizontal size={16} />} onClick={() => setFiltersOpen(true)}>
-                  Filters
+                  {t('Filters')}
                 </Button>
                 {canSaveSearch && hasFilters && (
                   <Button size="sm" icon={<BookmarkPlus size={16} />} onClick={openSaveSearch}>
-                    Save search
+                    {t('Save search')}
                   </Button>
                 )}
                 <Select
@@ -496,7 +558,7 @@ export function BrowsePage() {
                   value={params.sort ?? 'newest'}
                   onChange={(next) => update({ sort: next === 'newest' ? undefined : next })}
                   options={SORT_OPTIONS}
-                  aria-label="Sort by"
+                  aria-label={t('Sort by')}
                 />
               </div>
             </div>
@@ -512,9 +574,9 @@ export function BrowsePage() {
               <div className="card">
                 <EmptyState
                   icon={<SearchX size={26} />}
-                  title="No ads match your search"
-                  text="Try a different keyword, another city, or widen the price range."
-                  action={hasFilters ? <Button onClick={clearAll}>Clear filters</Button> : undefined}
+                  title={t('No ads match your search')}
+                  text={t('Try a different keyword, another city, or widen the price range.')}
+                  action={hasFilters ? <Button onClick={clearAll}>{t('Clear filters')}</Button> : undefined}
                 />
               </div>
             ) : (
@@ -541,19 +603,19 @@ export function BrowsePage() {
 
         <Modal
           open={saveOpen}
-          title="Save this search"
-          description="Come back to these filters any time from your dashboard."
+          title={t('Save this search')}
+          description={t('Come back to these filters any time from your dashboard.')}
           onClose={() => setSaveOpen(false)}
           footer={
             <>
-              <Button onClick={() => setSaveOpen(false)}>Cancel</Button>
+              <Button onClick={() => setSaveOpen(false)}>{t('Cancel')}</Button>
               <Button variant="primary" isLoading={saving} disabled={!saveLabel.trim()} onClick={saveSearch}>
-                Save search
+                {t('Save search')}
               </Button>
             </>
           }
         >
-          <InputField label="Name" value={saveLabel} onChange={(e) => setSaveLabel(e.target.value)} maxLength={80} required />
+          <InputField label={t('Name')} value={saveLabel} onChange={(e) => setSaveLabel(e.target.value)} maxLength={80} required />
         </Modal>
       </div>
     </>

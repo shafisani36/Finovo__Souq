@@ -21,6 +21,8 @@ import adminRoutes from './modules/admin/admin.routes.js'
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js'
 import supportRoutes from './modules/support/support.routes.js'
 import settingsRoutes from './modules/settings/settings.routes.js'
+import paymentRoutes, { stripeWebhookRouter } from './modules/payments/payments.routes.js'
+import storeRoutes, { myStoreRouter } from './modules/stores/stores.routes.js'
 
 const app = express()
 
@@ -34,6 +36,9 @@ app.use(cors({
   origin: env.CLIENT_URL,
   credentials: true,
 }))
+
+// Needs the raw request body, so it comes before the JSON parser
+app.use('/api/v1/payments/stripe/webhook', stripeWebhookRouter)
 
 app.use(express.json({ limit: '100kb' }))
 app.use(express.urlencoded({ extended: true, limit: '100kb' }))
@@ -79,6 +84,9 @@ app.use('/api/v1/listings', reportRoutes)
 app.use('/api/v1/listings', listingRoutes)
 app.use('/api/v1/conversations', chatRoutes)
 app.use('/api/v1/notifications', notificationRoutes)
+app.use('/api/v1/payments', paymentRoutes)
+app.use('/api/v1/stores/mine', myStoreRouter)
+app.use('/api/v1/stores', storeRoutes)
 app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1', dashboardRoutes)
 app.use('/api/v1/support', supportRoutes)

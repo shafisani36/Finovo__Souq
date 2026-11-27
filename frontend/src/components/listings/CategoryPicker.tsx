@@ -3,6 +3,7 @@ import { ArrowLeft, Check, ChevronRight } from 'lucide-react';
 import type { Category } from '../../types';
 import { childrenOf, trailOf } from '../../utils/categories';
 import { CategoryIcon } from './CategoryIcon';
+import { t, tn } from '../../i18n';
 
 interface CategoryPickerProps {
   categories: Category[];
@@ -24,14 +25,14 @@ export function CategoryPicker({ categories, value, onSelect }: CategoryPickerPr
 
   return (
     <div className="category-drill">
-      <nav className="category-drill__trail" aria-label="Category path">
+      <nav className="category-drill__trail" aria-label={t('Category path')}>
         {parent ? (
-          <button type="button" className="icon-btn icon-btn--sm" onClick={() => setParentId(parent.parentId)} aria-label="Back">
+          <button type="button" className="icon-btn icon-btn--sm" onClick={() => setParentId(parent.parentId)} aria-label={t('Back')}>
             <ArrowLeft size={16} />
           </button>
         ) : null}
         <button type="button" className="category-drill__crumb" onClick={() => setParentId(null)} disabled={!parent}>
-          All categories
+          {t('All categories')}
         </button>
         {trailOf(categories, parent).map((c) => (
           <span key={c.id} className="category-drill__step">
@@ -44,7 +45,7 @@ export function CategoryPicker({ categories, value, onSelect }: CategoryPickerPr
       </nav>
 
       {options.length === 0 ? (
-        <p className="text-muted">No subcategories are available here yet.</p>
+        <p className="text-muted">{t('No subcategories are available here yet.')}</p>
       ) : (
         <div className="category-picker">
           {options.map((c) => {
@@ -59,7 +60,7 @@ export function CategoryPicker({ categories, value, onSelect }: CategoryPickerPr
                   {c.isLeaf ? isSelected && <Check size={18} className="category-picker__mark" /> : <ChevronRight size={18} className="category-picker__mark" />}
                 </span>
                 <strong>{c.name}</strong>
-                <span className="text-muted">{c.isLeaf ? c.description || 'Post your ad here' : `${subCount} ${subCount === 1 ? 'subcategory' : 'subcategories'}`}</span>
+                <span className="text-muted">{c.isLeaf ? c.description || t('Post your ad here') : tn(subCount, '{count} subcategory', '{count} subcategories')}</span>
               </button>
             );
           })}

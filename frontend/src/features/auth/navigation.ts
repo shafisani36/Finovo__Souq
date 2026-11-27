@@ -11,12 +11,14 @@ import {
   Search,
   Settings,
   Sparkles,
+  Store,
   ShieldCheck,
   UserCog,
   Users,
   type LucideIcon,
 } from 'lucide-react';
 import type { UserRole } from '../../types';
+import { t } from '../../i18n';
 
 export interface NavItem {
   label: string;
@@ -35,50 +37,57 @@ export interface NavGroup {
 
 export const NAVIGATION: Record<UserRole, NavGroup[]> = {
   admin: [
-    { title: 'Overview', items: [{ label: 'Dashboard', to: '/admin/dashboard', icon: LayoutDashboard }] },
+    { title: t('Overview'), items: [{ label: t('Dashboard'), to: '/admin/dashboard', icon: LayoutDashboard }] },
     {
-      title: 'Listings',
+      title: t('Listings'),
       items: [
-        { label: 'Moderation', to: '/admin/moderation', icon: ShieldCheck, badgeKey: 'pendingReview' },
-        { label: 'Categories', to: '/admin/categories', icon: FolderTree },
-        { label: 'Promotions', to: '/admin/promotions', icon: Sparkles },
-        { label: 'Reports', to: '/admin/reports', icon: Flag },
-        { label: 'Activity log', to: '/admin/history', icon: History },
+        { label: t('Moderation'), to: '/admin/moderation', icon: ShieldCheck, badgeKey: 'pendingReview' },
+        { label: t('Categories'), to: '/admin/categories', icon: FolderTree },
+        { label: t('Promotions'), to: '/admin/promotions', icon: Sparkles },
+        { label: t('Reports'), to: '/admin/reports', icon: Flag },
+        { label: t('Activity log'), to: '/admin/history', icon: History },
       ],
     },
-    { title: 'People', items: [{ label: 'Users', to: '/admin/users', icon: Users }] },
     {
-      title: 'Account',
+      title: t('People'),
       items: [
-        { label: 'Settings', to: '/admin/settings', icon: Settings },
-        { label: 'Notifications', to: '/admin/notifications', icon: Bell, badgeKey: 'unreadNotifications' },
-        { label: 'Profile', to: '/admin/profile', icon: UserCog },
+        { label: t('Users'), to: '/admin/users', icon: Users },
+        { label: t('Stores'), to: '/admin/stores', icon: Store },
+      ],
+    },
+    {
+      title: t('Account'),
+      items: [
+        { label: t('Settings'), to: '/admin/settings', icon: Settings },
+        { label: t('Notifications'), to: '/admin/notifications', icon: Bell, badgeKey: 'unreadNotifications' },
+        { label: t('Profile'), to: '/admin/profile', icon: UserCog },
       ],
     },
   ],
   user: [
-    { title: 'Overview', items: [{ label: 'Dashboard', to: '/account/dashboard', icon: LayoutDashboard }] },
+    { title: t('Overview'), items: [{ label: t('Dashboard'), to: '/account/dashboard', icon: LayoutDashboard }] },
     {
-      title: 'Selling',
+      title: t('Selling'),
       sellerOnly: true,
       items: [
-        { label: 'My ads', to: '/account/listings', icon: ListChecks },
-        { label: 'Post an ad', to: '/account/listings/new', icon: PlusCircle },
+        { label: t('My ads'), to: '/account/listings', icon: ListChecks },
+        { label: t('Post an ad'), to: '/account/listings/new', icon: PlusCircle },
+        { label: t('My store'), to: '/account/store', icon: Store },
       ],
     },
     {
-      title: 'Buying',
+      title: t('Buying'),
       items: [
-        { label: 'Browse ads', to: '/search', icon: Search },
-        { label: 'Saved ads', to: '/account/saved', icon: Heart },
-        { label: 'Messages', to: '/account/messages', icon: MessageSquare, badgeKey: 'unreadMessages' },
+        { label: t('Browse ads'), to: '/search', icon: Search },
+        { label: t('Saved ads'), to: '/account/saved', icon: Heart },
+        { label: t('Messages'), to: '/account/messages', icon: MessageSquare, badgeKey: 'unreadMessages' },
       ],
     },
     {
-      title: 'Account',
+      title: t('Account'),
       items: [
-        { label: 'Notifications', to: '/account/notifications', icon: Bell, badgeKey: 'unreadNotifications' },
-        { label: 'Profile', to: '/account/profile', icon: UserCog },
+        { label: t('Notifications'), to: '/account/notifications', icon: Bell, badgeKey: 'unreadNotifications' },
+        { label: t('Profile'), to: '/account/profile', icon: UserCog },
       ],
     },
   ],

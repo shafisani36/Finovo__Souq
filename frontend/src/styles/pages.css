@@ -624,21 +624,19 @@
   font-weight: 600;
 }
 
-.seller-profile__facts {
-  display: grid;
+.seller-profile__city {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
   margin: 0;
-  padding: 0;
-  list-style: none;
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
 
-.seller-profile__facts li {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+.seller-profile__card .trust-facts {
+  justify-items: start;
+  width: 100%;
+  text-align: start;
 }
 
 .seller-profile__note {
@@ -2176,5 +2174,114 @@
   .promo-row__actions {
     width: 100%;
     justify-content: flex-end;
+  }
+}
+
+/* Seller trust card: ad page and seller profile */
+.trust-facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.trust-facts li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.trust-facts svg {
+  flex: none;
+  margin-block-start: 2px;
+  color: var(--color-primary);
+}
+
+.trust-facts__muted {
+  color: var(--color-text-muted);
+}
+
+.trust-facts__business {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.trust-facts__business svg {
+  color: var(--color-success, #1a7f4b);
+}
+
+/* ---------- Business store page ---------- */
+.store-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+  padding: var(--space-6);
+}
+
+.store-hero__body {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.store-hero__name {
+  margin: 0;
+  font-size: var(--text-2xl, 1.75rem);
+}
+
+.store-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.store-hero__meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.store-hero__description {
+  margin: 0;
+  max-width: 70ch;
+  white-space: pre-line;
+  color: var(--color-text-secondary);
+}
+
+.store-hero__note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.store-form {
+  margin-top: var(--space-5);
+}
+
+.store-logo {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.store-logo .card-title {
+  justify-self: stretch;
+  text-align: start;
+}
+
+@media (max-width: 640px) {
+  .store-hero {
+    flex-direction: column;
+    padding: var(--space-5);
   }
 }

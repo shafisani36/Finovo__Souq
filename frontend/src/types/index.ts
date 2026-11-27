@@ -1,7 +1,7 @@
 /* ---------- Users and roles ---------- */
 /** Roles match the backend user model: one "user" account can both buy and sell */
 export type UserRole = 'admin' | 'user';
-export type UserStatus = 'pending' | 'active' | 'suspended';
+export type UserStatus = 'pending' | 'active' | 'suspended' | 'deleted';
 /** Sellers can post ads once an admin approves the account; buyers browse, save and chat */
 export type AccountType = 'buyer' | 'seller';
 
@@ -16,6 +16,9 @@ export interface User {
   isEmailVerified: boolean;
   city: string | null;
   avatarUrl: string | null;
+  /** Set while the person's account deletion request waits for our team */
+  deletionRequestedAt: string | null;
+  deletionReason: string | null;
   createdAt: string;
 }
 
@@ -76,6 +79,7 @@ export interface Category {
 export interface AdminCategory {
   id: string;
   name: string;
+  nameAr?: string;
   slug: string;
   parentId: string | null;
   depth: number;
@@ -98,6 +102,8 @@ export interface AdminCategory {
 
 export interface CategoryPayload {
   name?: string;
+  /** Shown on the Arabic site; empty means the English name is translated or shown */
+  nameAr?: string;
   slug?: string;
   parentId?: string | null;
   description?: string;
@@ -133,8 +139,53 @@ export interface SellerSummary {
   avatarUrl: string | null;
   city: string | null;
   memberSince: string;
-  phoneVerified: boolean;
   activeListings: number;
+  /** Only on an ad's own page and the seller profile */
+  trust?: SellerTrust;
+}
+
+/** Facts from the seller's history on Finovo Souq; reply figures are null until there are enough chats */
+export interface SellerTrust {
+  itemsSold: number;
+  replyRate: number | null;
+  replySpeed: 'within_hour' | 'within_hours' | 'within_day' | 'slow' | null;
+  /** Set when the seller has a store whose commercial registration our team checked */
+  business: { name: string; slug: string } | null;
+}
+
+export type StoreStatus = 'pending' | 'verified' | 'rejected' | 'suspended';
+
+/** A verified business page, as anyone sees it */
+export interface PublicStore {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  city: string | null;
+  logoUrl: string | null;
+  sellerId: string;
+  verifiedAt: string | null;
+  activeListings?: number;
+}
+
+/** The owner's and admins' view, with the private registration number and review state */
+export interface Store extends PublicStore {
+  commercialRegistration: string;
+  status: StoreStatus;
+  reviewNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminStore extends Store {
+  owner: { id: string; name: string; email: string } | null;
+}
+
+export interface StorePayload {
+  name: string;
+  description: string;
+  city: string | null;
+  commercialRegistration: string;
 }
 
 export interface Listing {
@@ -250,8 +301,12 @@ export interface Message {
   body: string;
   attachment: MessageAttachment | null;
   deleted: boolean;
+  /** Scam signs the server found in the text; the other person sees a safety warning */
+  risks?: MessageRisk[];
   createdAt: string;
 }
+
+export type MessageRisk = 'payment' | 'link' | 'off_platform' | 'code' | 'meeting';
 
 export interface MessagePage {
   items: Message[];
@@ -385,7 +440,13 @@ export type ModerationAction =
   | 'user_suspended'
   | 'user_reactivated'
   | 'listing_featured'
-  | 'listing_unfeatured';
+  | 'listing_unfeatured'
+  | 'user_deleted'
+  | 'promotion_approved'
+  | 'promotion_rejected'
+  | 'store_verified'
+  | 'store_rejected'
+  | 'store_suspended';
 
 export interface ModerationLogEntry {
   id: string;
@@ -416,6 +477,35 @@ export interface SiteSettings {
   social: Record<SocialNetwork, string>;
   announcement: { text: string; tone: 'info' | 'warning'; link: string | null } | null;
   listings: { maxPhotos: number; expiryDays: number };
+  /** Paid featured ads; enabled only when the team turned it on and payments are set up */
+  promotions: { enabled: boolean; currency: string; packages: PromotionPackage[] };
+}
+
+/** Feature an ad for `days` days for `price` riyals */
+export interface PromotionPackage {
+  days: number;
+  price: number;
+}
+
+/** paid = money received and waiting for an admin; approved = the ad is featured */
+export type PaymentStatus = 'pending' | 'paid' | 'approved' | 'refunded' | 'expired' | 'failed';
+
+export interface Payment {
+  id: string;
+  listingId: string | null;
+  listingTitle: string | null;
+  user: { id: string; name: string; email: string } | null;
+  days: number;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  paidAt: string | null;
+  featuredUntil: string | null;
+  invoiceNumber: string | null;
+  invoiceSent: boolean;
+  reviewedAt: string | null;
+  note: string | null;
+  createdAt: string;
 }
 
 export interface LegalPage {
@@ -423,6 +513,9 @@ export interface LegalPage {
   title: string;
   /** Light formatting: "## " headings, "- " list items and **bold** */
   body: string;
+  /** Arabic version; empty means the English page is shown on the Arabic site */
+  titleAr?: string;
+  bodyAr?: string;
   updatedAt: string;
 }
 
@@ -431,6 +524,7 @@ export interface AdminSettings {
   social: Record<SocialNetwork, string>;
   announcement: { enabled: boolean; text: string; tone: 'info' | 'warning'; link: string };
   listings: { maxPhotos: number; expiryDays: number };
+  promotions: { enabled: boolean; packages: PromotionPackage[]; paymentsConfigured: boolean };
   pages: Record<LegalPageSlug, Omit<LegalPage, 'slug'>>;
   updatedAt: string;
 }

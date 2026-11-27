@@ -13,6 +13,7 @@ import ApiResponse from '../../utils/ApiResponse.js'
 import ApiError from '../../utils/ApiError.js'
 import { escapeRegex, getPagination, paginated, toText } from '../../utils/pagination.js'
 import { publicUrl, saveImage, removeFile } from '../../services/storage.service.js'
+import { getSellerTrust } from './seller.trust.js'
 import Listing, { LOCKED_STATUSES, PUBLIC_FILTER } from './listing.model.js'
 import DailyStat from './dailyStat.model.js'
 import { toListingView, toListingViews } from './listing.view.js'
@@ -83,19 +84,19 @@ export const sellerRouter = Router()
 // Only what a buyer needs to trust a seller: never email, phone or account status
 sellerRouter.get('/:id', asyncHandler(async (req, res) => {
   const seller = isValidObjectId(req.params.id)
-    ? await User.findOne({ _id: req.params.id, role: 'user', accountType: 'seller', status: 'active' }).select('name city phone avatarKey createdAt')
+    ? await User.findOne({ _id: req.params.id, role: 'user', accountType: 'seller', status: 'active' }).select('name city avatarKey createdAt')
     : null
   if (!seller) throw ApiError.notFound('This seller could not be found')
 
-  const activeListings = await Listing.countDocuments({ ...PUBLIC_FILTER, seller: seller._id })
+  const [activeListings, trust] = await Promise.all([Listing.countDocuments({ ...PUBLIC_FILTER, seller: seller._id }), getSellerTrust(seller._id)])
   res.json(new ApiResponse(200, {
     id: seller.id,
     name: seller.name,
     city: seller.city ?? null,
     avatarUrl: publicUrl(seller.avatarKey),
     memberSince: seller.createdAt,
-    phoneVerified: Boolean(seller.phone),
     activeListings,
+    trust,
   }))
 }))
 
@@ -147,7 +148,8 @@ router.get('/:id', optionalAuthenticate, asyncHandler(async (req, res) => {
       ])
     }
   }
-  await respond(res, listing)
+  const [view, trust] = await Promise.all([toListingView(listing), getSellerTrust(listing.seller)])
+  res.json(new ApiResponse(200, { ...view, seller: { ...view.seller, trust } }))
 }))
 
 // Up to 4 live ads from the same final category, falling back to its parent; same city first

@@ -9,6 +9,15 @@ export const DEFAULT_SETTINGS = {
   social: { x: '', instagram: '', facebook: '', tiktok: '', youtube: '' },
   announcement: { enabled: false, text: '', tone: 'info', link: '' },
   listings: { maxPhotos: 10, expiryDays: 30 },
+  promotions: {
+    enabled: true,
+    packages: [
+      { days: 3, price: 25 },
+      { days: 7, price: 49 },
+      { days: 14, price: 89 },
+      { days: 30, price: 149 },
+    ],
+  },
   pages: {
     help: {
       title: 'Help centre',

@@ -14,9 +14,10 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { savedService } from '../../services/saved.service';
 import { formatRelative } from '../../utils/format';
 import { savedSearchLink } from '../../utils/search';
+import { t } from '../../i18n';
 
 export function SavedPage() {
-  useDocumentTitle('Saved');
+  useDocumentTitle(t('Saved'));
   const toast = useToast();
   const [tab, setTab] = useState<'ads' | 'searches'>('ads');
   const { isSaved } = useSavedListings();
@@ -32,9 +33,16 @@ export function SavedPage() {
     try {
       const updated = await savedService.setSearchAlerts(search.id, !search.alertsEnabled);
       searches.setData((prev) => prev?.map((s) => (s.id === updated.id ? updated : s)) ?? null);
-      toast.show({ title: updated.alertsEnabled ? 'Alerts on' : 'Alerts off', message: updated.alertsEnabled ? `We will notify you about new ads for "${updated.label}".` : updated.label });
+      toast.show({
+        title: updated.alertsEnabled ? t('Alerts on') : t('Alerts off'),
+        message: updated.alertsEnabled
+          ? t('We will notify you about new ads for "{label}".', {
+              label: updated.label,
+            })
+          : updated.label,
+      });
     } catch (error) {
-      toast.show({ title: 'Could not change alerts', message: getErrorMessage(error), tone: 'error' });
+      toast.show({ title: t('Could not change alerts'), message: getErrorMessage(error), tone: 'error' });
     } finally {
       setRemoving(null);
     }
@@ -45,9 +53,9 @@ export function SavedPage() {
     try {
       await savedService.removeSearch(id);
       searches.setData((prev) => prev?.filter((s) => s.id !== id) ?? null);
-      toast.show({ title: 'Saved search removed' });
+      toast.show({ title: t('Saved search removed') });
     } catch (error) {
-      toast.show({ title: 'Could not remove search', message: getErrorMessage(error), tone: 'error' });
+      toast.show({ title: t('Could not remove search'), message: getErrorMessage(error), tone: 'error' });
     } finally {
       setRemoving(null);
     }
@@ -55,13 +63,13 @@ export function SavedPage() {
 
   return (
     <>
-      <PageHeader title="Saved" subtitle="Ads and searches you saved for later." />
-      <div className="segmented" role="tablist" aria-label="Saved items" style={{ marginBottom: 'var(--space-6)' }}>
+      <PageHeader title={t('Saved')} subtitle={t('Ads and searches you saved for later.')} />
+      <div className="segmented" role="tablist" aria-label={t('Saved items')} style={{ marginBottom: 'var(--space-6)' }}>
         <button type="button" role="tab" aria-selected={tab === 'ads'} className="segmented__item" onClick={() => setTab('ads')}>
-          <Heart size={15} /> Saved ads {listings.data ? `(${visibleListings.length})` : ''}
+          <Heart size={15} /> {t('Saved ads')} {listings.data ? `(${visibleListings.length})` : ''}
         </button>
         <button type="button" role="tab" aria-selected={tab === 'searches'} className="segmented__item" onClick={() => setTab('searches')}>
-          <Search size={15} /> Saved searches {searches.data ? `(${searches.data.length})` : ''}
+          <Search size={15} /> {t('Saved searches')} {searches.data ? `(${searches.data.length})` : ''}
         </button>
       </div>
 
@@ -76,7 +84,16 @@ export function SavedPage() {
           </div>
         ) : visibleListings.length === 0 ? (
           <div className="card">
-            <EmptyState icon={<Heart size={26} />} title="No saved ads" text="Tap the heart on any ad to save it here." action={<ButtonLink to="/search" variant="primary">Browse ads</ButtonLink>} />
+            <EmptyState
+              icon={<Heart size={26} />}
+              title={t('No saved ads')}
+              text={t('Tap the heart on any ad to save it here.')}
+              action={
+                <ButtonLink to="/search" variant="primary">
+                  {t('Browse ads')}
+                </ButtonLink>
+              }
+            />
           </div>
         ) : (
           <div className="listing-grid listing-grid--3">
@@ -93,7 +110,12 @@ export function SavedPage() {
           ) : searches.isLoading || !searches.data ? (
             <SkeletonBlock height={160} />
           ) : searches.data.length === 0 ? (
-            <EmptyState icon={<Search size={26} />} title="No saved searches" text="Run a search with filters, then choose Save search." action={<ButtonLink to="/search">Start searching</ButtonLink>} />
+            <EmptyState
+              icon={<Search size={26} />}
+              title={t('No saved searches')}
+              text={t('Run a search with filters, then choose Save search.')}
+              action={<ButtonLink to="/search">{t('Start searching')}</ButtonLink>}
+            />
           ) : (
             <ul className="saved-searches">
               {searches.data.map((s) => (
@@ -104,21 +126,39 @@ export function SavedPage() {
                     </span>
                     <span>
                       <strong>{s.label}</strong>
-                      <span className="text-muted">Saved {formatRelative(s.createdAt)}</span>
+                      <span className="text-muted">
+                        {t('Saved')} {formatRelative(s.createdAt)}
+                      </span>
                     </span>
                   </Link>
                   <button
                     type="button"
                     className={`icon-btn icon-btn--sm${s.alertsEnabled ? ' is-on' : ''}`}
                     aria-pressed={s.alertsEnabled}
-                    aria-label={s.alertsEnabled ? `Turn off alerts for ${s.label}` : `Turn on alerts for ${s.label}`}
-                    title={s.alertsEnabled ? 'Alerts on' : 'Alerts off'}
+                    aria-label={
+                      s.alertsEnabled
+                        ? t('Turn off alerts for {label}', {
+                            label: s.label,
+                          })
+                        : t('Turn on alerts for {label}', {
+                            label: s.label,
+                          })
+                    }
+                    title={s.alertsEnabled ? t('Alerts on') : t('Alerts off')}
                     disabled={removing === s.id}
                     onClick={() => toggleAlerts(s)}
                   >
                     {s.alertsEnabled ? <BellRing size={15} /> : <BellOff size={15} />}
                   </button>
-                  <button type="button" className="icon-btn icon-btn--sm" aria-label={`Delete saved search ${s.label}`} disabled={removing === s.id} onClick={() => removeSearch(s.id)}>
+                  <button
+                    type="button"
+                    className="icon-btn icon-btn--sm"
+                    aria-label={t('Delete saved search {label}', {
+                      label: s.label,
+                    })}
+                    disabled={removing === s.id}
+                    onClick={() => removeSearch(s.id)}
+                  >
                     <Trash2 size={15} />
                   </button>
                 </li>
@@ -126,7 +166,7 @@ export function SavedPage() {
             </ul>
           )}
           <p className="text-muted" style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)' }}>
-            With alerts on, you get a notification when a new ad matches the search (at most one per search each hour).
+            {t('With alerts on, you get a notification when a new ad matches the search (at most one per search each hour).')}
           </p>
         </section>
       )}

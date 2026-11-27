@@ -18,26 +18,31 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { categoriesService } from '../../services/categories.service';
 import { listingsService } from '../../services/listings.service';
 import { formatNumber } from '../../utils/format';
+import { t, tn } from '../../i18n';
 
 const POPULAR_SEARCHES = [
-  { label: 'Camry', to: '/search?q=Camry' },
-  { label: 'Apartment for rent', to: '/search?category=property' },
+  { label: t('Camry'), to: '/search?q=Camry' },
+  { label: t('Apartment for rent'), to: '/search?category=property' },
   { label: 'iPhone', to: '/search?q=iPhone' },
-  { label: 'AC repair', to: '/search?q=AC' },
-  { label: 'Sofa', to: '/search?q=sofa' },
+  { label: t('AC repair'), to: '/search?q=AC' },
+  { label: t('Sofa'), to: '/search?q=sofa' },
 ];
 
 const FEATURES = [
-  { icon: ShieldCheck, title: 'Every ad is checked', text: 'Our team reviews each ad before it goes live, so you see real items with honest details and prices.' },
-  { icon: LockKeyhole, title: 'Chat without sharing your number', text: 'Talk to buyers and sellers inside Finovo Souq. Your phone number stays private until you decide to share it.' },
-  { icon: PlusCircle, title: 'Post free in minutes', text: 'Pick a category, add the details buyers care about and your photos. No fees for posting an ad.' },
-  { icon: Bell, title: 'Save ads and get updates', text: 'Keep the ads you like in one place and get notified when a seller replies or your ad is approved.' },
+  { icon: ShieldCheck, title: t('Every ad is checked'), text: t('Our team reviews each ad before it goes live, so you see real items with honest details and prices.') },
+  {
+    icon: LockKeyhole,
+    title: t('Chat that looks out for you'),
+    text: t('Talk inside Finovo Souq without sharing your number. We warn you when a message asks for a deposit, a code or a payment link.'),
+  },
+  { icon: PlusCircle, title: t('Free to post, always'), text: t('Personal sellers never pay to post and never pay commission on a sale. Promoting an ad is optional.') },
+  { icon: Bell, title: t('Save ads and get updates'), text: t('Keep the ads you like in one place and get notified when a seller replies or your ad is approved.') },
 ];
 
 const STEPS = [
-  { icon: UserPlus, title: 'Create a free account', text: 'One account lets you buy and sell. It takes less than a minute.' },
-  { icon: PlusCircle, title: 'Post or find an ad', text: 'Post what you are selling, or search by keyword, city and category.' },
-  { icon: BadgeCheck, title: 'Meet and close the deal', text: 'Chat on Finovo Souq, meet in a public place and check the item before you pay.' },
+  { icon: UserPlus, title: t('Create a free account'), text: t('One account lets you buy and sell. It takes less than a minute.') },
+  { icon: PlusCircle, title: t('Post or find an ad'), text: t('Post what you are selling, or search by keyword, city and category.') },
+  { icon: BadgeCheck, title: t('Meet and close the deal'), text: t('Chat on Finovo Souq, meet in a public place and check the item before you pay.') },
 ];
 
 const HOME_FAQ = FAQ_GROUPS.flatMap((group) => group.items).slice(0, 5);
@@ -56,18 +61,20 @@ export function HomePage() {
       <section className="landing-hero" aria-labelledby="hero-title" data-header-dark>
         <div className="container landing-hero__inner">
           <span className="landing-hero__badge" data-reveal>
-            <ShieldCheck size={14} /> Every ad reviewed before it goes live
+            <ShieldCheck size={14} /> {t('Every ad reviewed before it goes live')}
           </span>
           <h1 id="hero-title" className="landing-hero__title" data-reveal style={revealDelay(1)}>
-            Buy and sell anything
-            <br /> across Saudi Arabia
+            {t('Buy and sell anything')}
+            <br /> {t('across Saudi Arabia')}
           </h1>
-          <p className="landing-hero__text" data-reveal style={revealDelay(2)}>Cars, property, electronics, furniture and local services from people near you.</p>
+          <p className="landing-hero__text" data-reveal style={revealDelay(2)}>
+            {t('Cars, property, electronics, furniture and local services from people near you.')}
+          </p>
           <div className="landing-hero__search" data-reveal style={revealDelay(3)}>
             <SearchBar categories={categories.data ?? []} variant="hero" />
           </div>
           <p className="landing-hero__popular" data-reveal style={revealDelay(4)}>
-            <span>Popular:</span>
+            <span>{t('Popular:')}</span>
             {POPULAR_SEARCHES.map((item) => (
               <Link key={item.label} to={item.to}>
                 {item.label}
@@ -80,12 +87,12 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="stats" aria-label="Finovo Souq in numbers">
+      <section className="stats" aria-label={t('Finovo Souq in numbers')}>
         <div className="container stats__grid">
           {[
-            { icon: Layers, value: latest.data ? formatNumber(latest.data.total) : '–', label: 'Live ads right now', note: 'Checked by our team' },
-            { icon: LayoutGrid, value: categories.data ? String(categories.data.length) : '–', label: 'Categories to browse', note: 'Each with its own filters' },
-            { icon: MapPinned, value: String(SAUDI_CITIES.length), label: 'Cities across the Kingdom', note: 'From Riyadh to Abha' },
+            { icon: Layers, value: latest.data ? formatNumber(latest.data.total) : '–', label: t('Live ads right now'), note: t('Checked by our team') },
+            { icon: LayoutGrid, value: categories.data ? String(categories.data.length) : '–', label: t('Categories to browse'), note: t('Each with its own filters') },
+            { icon: MapPinned, value: String(SAUDI_CITIES.length), label: t('Cities across the Kingdom'), note: t('From Riyadh to Abha') },
           ].map((stat, i) => (
             <div key={stat.label} className="stat-tile" data-reveal style={revealDelay(i)}>
               <span className="stat-tile__icon">
@@ -97,9 +104,11 @@ export function HomePage() {
             </div>
           ))}
           <Link to={joinLink} className="stat-join" data-reveal style={revealDelay(3)}>
-            <span className="stat-join__pill">Free account</span>
-            <strong>{!user ? 'Join Finovo Souq' : isSeller ? 'Post your next ad' : 'Find your next deal'}</strong>
-            <span className="stat-join__text">{!user ? 'Sign up free to buy, or as a seller to post ads.' : isSeller ? 'It goes live after a quick review.' : 'Browse thousands of checked ads.'}</span>
+            <span className="stat-join__pill">{t('Free account')}</span>
+            <strong>{!user ? t('Join Finovo Souq') : isSeller ? t('Post your next ad') : t('Find your next deal')}</strong>
+            <span className="stat-join__text">
+              {!user ? t('Sign up free to buy, or as a seller to post ads.') : isSeller ? t('It goes live after a quick review.') : t('Browse thousands of checked ads.')}
+            </span>
             <span className="stat-join__arrow" aria-hidden="true">
               <ArrowRight size={18} />
             </span>
@@ -111,21 +120,25 @@ export function HomePage() {
         <div className="container">
           <div className="section-intro" data-reveal>
             <h2 id="categories-title" className="section-intro__title">
-              Browse by category
+              {t('Browse by category')}
             </h2>
-            <p className="section-intro__text">Every category has its own filters, so you find the right car, flat or phone faster.</p>
+            <p className="section-intro__text">{t('Every category has its own filters, so you find the right car, flat or phone faster.')}</p>
           </div>
           <div className="category-cards">
             {categories.data
-              ? categories.data.filter((c) => c.depth === 0).map((category, i) => (
-                  <Link key={category.id} to={`/search?category=${category.slug}`} className="category-card" data-reveal style={revealDelay(i)}>
-                    <span className="category-card__icon">
-                      <CategoryIcon icon={category.icon} size={22} strokeWidth={1.8} aria-hidden="true" />
-                    </span>
-                    <strong>{category.name}</strong>
-                    <span className="tabular">{formatNumber(category.listingCount)} ads</span>
-                  </Link>
-                ))
+              ? categories.data
+                  .filter((c) => c.depth === 0)
+                  .map((category, i) => (
+                    <Link key={category.id} to={`/search?category=${category.slug}`} className="category-card" data-reveal style={revealDelay(i)}>
+                      <span className="category-card__icon">
+                        <CategoryIcon icon={category.icon} size={22} strokeWidth={1.8} aria-hidden="true" />
+                      </span>
+                      <strong>{category.name}</strong>
+                      <span className="tabular">
+                        {tn(category.listingCount, '{count} ad', '{count} ads', { count: formatNumber(category.listingCount) })}
+                      </span>
+                    </Link>
+                  ))
               : Array.from({ length: 5 }, (_, index) => <div key={index} className="category-card skeleton" aria-hidden="true" />)}
           </div>
         </div>
@@ -134,11 +147,11 @@ export function HomePage() {
       <section className="section-lg section-lg--tint" aria-labelledby="features-title">
         <div className="container">
           <div className="section-intro section-intro--center" data-reveal>
-            <p className="eyebrow">Why Finovo Souq</p>
+            <p className="eyebrow">{t('Why Finovo Souq')}</p>
             <h2 id="features-title" className="section-intro__title">
-              Buy and sell with confidence
+              {t('Buy and sell with confidence')}
             </h2>
-            <p className="section-intro__text">Checked ads, private chat and clear rules for everyone who uses it.</p>
+            <p className="section-intro__text">{t('Checked ads, private chat and clear rules for everyone who uses it.')}</p>
           </div>
           <div className="feature-grid">
             {FEATURES.map((feature, i) => (
@@ -163,9 +176,9 @@ export function HomePage() {
             <div className="section-intro section-intro--row" data-reveal>
               <div>
                 <h2 id="featured-title" className="section-intro__title">
-                  Featured ads
+                  {t('Featured ads')}
                 </h2>
-                <p className="section-intro__text">Picked by our team and shown first.</p>
+                <p className="section-intro__text">{t('Picked by our team and shown first.')}</p>
               </div>
             </div>
             <div className="listing-grid">
@@ -184,12 +197,12 @@ export function HomePage() {
           <div className="section-intro section-intro--row" data-reveal>
             <div>
               <h2 id="latest-title" className="section-intro__title">
-                Recently added
+                {t('Recently added')}
               </h2>
-              <p className="section-intro__text">Fresh ads from sellers in your area.</p>
+              <p className="section-intro__text">{t('Fresh ads from sellers in your area.')}</p>
             </div>
             <ButtonLink to="/search" icon={<ArrowRight size={16} />}>
-              View all ads
+              {t('View all ads')}
             </ButtonLink>
           </div>
           {latest.error ? (
@@ -212,9 +225,9 @@ export function HomePage() {
         <div className="container">
           <div className="section-intro section-intro--center" data-reveal>
             <h2 id="steps-title" className="section-intro__title">
-              How it works
+              {t('How it works')}
             </h2>
-            <p className="section-intro__text">Three simple steps from posting to a done deal.</p>
+            <p className="section-intro__text">{t('Three simple steps from posting to a done deal.')}</p>
           </div>
           <ol className="steps">
             {STEPS.map((step, index) => (

@@ -10,6 +10,12 @@ export const MODERATION_ACTIONS = [
   'user_reactivated',
   'listing_featured',
   'listing_unfeatured',
+  'user_deleted',
+  'promotion_approved',
+  'promotion_rejected',
+  'store_verified',
+  'store_rejected',
+  'store_suspended',
 ]
 
 /** Audit trail of every admin decision: who did what, to which ad or account, and why */

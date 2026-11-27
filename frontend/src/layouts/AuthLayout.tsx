@@ -2,11 +2,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, Eye, MessageSquare, ShieldCheck, Store } from 'lucide-react';
 import { Link, NavLink, useSearchParams } from 'react-router-dom';
 import { Logo } from '../components/ui/Logo';
+import { LanguageSwitch } from '../components/ui/LanguageSwitch';
+import { t } from '../i18n';
 
 const SLIDES = [
-  { title: 'Buy and sell with people near you', text: 'Cars, flats, phones, furniture and local services across Saudi Arabia, all in one place.' },
-  { title: 'Every ad is checked before it goes live', text: 'Our team reviews each ad, so buyers see real items with honest prices and details.' },
-  { title: 'Chat safely without sharing your number', text: 'Talk to buyers and sellers inside Finovo Souq and keep your phone number private.' },
+  { title: t('Buy and sell with people near you'), text: t('Cars, flats, phones, furniture and local services across Saudi Arabia, all in one place.') },
+  { title: t('Every ad is checked before it goes live'), text: t('Our team reviews each ad, so buyers see real items with honest prices and details.') },
+  { title: t('Chat safely without sharing your number'), text: t('Talk to buyers and sellers inside Finovo Souq and keep your phone number private.') },
 ];
 
 const SLIDE_MS = 6000;
@@ -37,18 +39,18 @@ export function AuthLayout({ title, subtitle, children, showTabs = true }: AuthL
   return (
     <div className="auth-page">
       <div className="auth-shell">
-        <aside className="auth-showcase" aria-label="About Finovo Souq">
+        <aside className="auth-showcase" aria-label={t('About Finovo Souq')}>
           <div className="auth-showcase__preview" aria-hidden="true">
             <div className="auth-mock auth-mock--chart">
               <div className="auth-mock__head">
-                <span>Ad performance</span>
-                <span className="auth-mock__muted">Last 30 days</span>
+                <span>{t('Ad performance')}</span>
+                <span className="auth-mock__muted">{t('Last 30 days')}</span>
               </div>
               <div className="auth-mock__figure">
                 <strong>5,600</strong>
                 <span className="auth-mock__delta">+19%</span>
               </div>
-              <span className="auth-mock__muted">Views on your ads</span>
+              <span className="auth-mock__muted">{t('Views on your ads')}</span>
               <div className="auth-mock__bars">
                 {BARS.map((h, i) => (
                   <span key={i} style={{ height: `${h}%` }} className={i === BARS.length - 3 ? 'is-active' : undefined} />
@@ -58,9 +60,9 @@ export function AuthLayout({ title, subtitle, children, showTabs = true }: AuthL
 
             <div className="auth-mock auth-mock--listing">
               <div className="auth-mock__head">
-                <span>Your ad is live</span>
+                <span>{t('Your ad is live')}</span>
                 <span className="auth-mock__pill">
-                  <ShieldCheck size={11} /> Approved
+                  <ShieldCheck size={11} /> {t('Approved')}
                 </span>
               </div>
               <div className="auth-mock__row">
@@ -68,17 +70,17 @@ export function AuthLayout({ title, subtitle, children, showTabs = true }: AuthL
                   <Store size={16} />
                 </span>
                 <span className="auth-mock__text">
-                  <strong>Toyota Camry GLE 2022</strong>
-                  <span className="auth-mock__muted">Cars · Riyadh</span>
+                  <strong>{t('Toyota Camry GLE 2022')}</strong>
+                  <span className="auth-mock__muted">{t('Cars · Riyadh')}</span>
                 </span>
-                <strong className="auth-mock__price">SAR 92,000</strong>
+                <strong className="auth-mock__price">{t('SAR 92,000')}</strong>
               </div>
               <div className="auth-mock__stats">
                 <span>
-                  <Eye size={12} /> 1,840 views
+                  <Eye size={12} /> {t('1,840 views')}
                 </span>
                 <span>
-                  <MessageSquare size={12} /> 6 chats
+                  <MessageSquare size={12} /> {t('6 chats')}
                 </span>
               </div>
             </div>
@@ -86,8 +88,8 @@ export function AuthLayout({ title, subtitle, children, showTabs = true }: AuthL
             <div className="auth-mock auth-mock--message">
               <span className="auth-mock__avatar">SA</span>
               <span className="auth-mock__text">
-                <strong>Sara Al-Otaibi</strong>
-                <span className="auth-mock__muted">Is the Camry still available?</span>
+                <strong>{t('Sara Al-Otaibi')}</strong>
+                <span className="auth-mock__muted">{t('Is the Camry still available?')}</span>
               </span>
               <span className="auth-mock__dot" />
             </div>
@@ -101,9 +103,18 @@ export function AuthLayout({ title, subtitle, children, showTabs = true }: AuthL
               <h2>{SLIDES[slide].title}</h2>
               <p>{SLIDES[slide].text}</p>
             </div>
-            <div className="auth-showcase__dots" role="tablist" aria-label="Messages">
+            <div className="auth-showcase__dots" role="tablist" aria-label={t('Messages')}>
               {SLIDES.map((s, i) => (
-                <button key={s.title} type="button" role="tab" aria-selected={slide === i} aria-label={`Message ${i + 1}`} onClick={() => setSlide(i)} />
+                <button
+                  key={s.title}
+                  type="button"
+                  role="tab"
+                  aria-selected={slide === i}
+                  aria-label={t('Message {i}', {
+                    i: i + 1,
+                  })}
+                  onClick={() => setSlide(i)}
+                />
               ))}
             </div>
           </div>
@@ -112,28 +123,33 @@ export function AuthLayout({ title, subtitle, children, showTabs = true }: AuthL
         <main className="auth-panel">
           <div className="auth-panel__top">
             <Logo />
-            <Link to="/" className="auth-panel__back">
-              <ArrowLeft size={15} /> Back to home
-            </Link>
+            <div className="auth-panel__top-actions">
+              <LanguageSwitch />
+              <Link to="/" className="auth-panel__back">
+                <ArrowLeft size={15} /> {t('Back to home')}
+              </Link>
+            </div>
           </div>
 
           <div className="auth-panel__body">
             <h1 className="auth-panel__title">{title}</h1>
             {subtitle && <p className="auth-panel__subtitle">{subtitle}</p>}
             {showTabs && (
-              <nav className="auth-tabs" aria-label="Account">
+              <nav className="auth-tabs" aria-label={t('Account')}>
                 <NavLink to={`/login${query}`} className="auth-tabs__item">
-                  Sign in
+                  {t('Sign in')}
                 </NavLink>
                 <NavLink to={`/register${query}`} className="auth-tabs__item">
-                  Create account
+                  {t('Create account')}
                 </NavLink>
               </nav>
             )}
             {children}
           </div>
 
-          <p className="auth-panel__foot">© {CURRENT_YEAR} Finovo Souq. All prices in SAR.</p>
+          <p className="auth-panel__foot">
+            © {CURRENT_YEAR} {t('Finovo Souq. All prices in SAR.')}
+          </p>
         </main>
       </div>
     </div>

@@ -2,6 +2,8 @@ import ApiError from '../../utils/ApiError.js'
 import { toText } from '../../utils/pagination.js'
 import { SOCIAL_NETWORKS } from './setting.model.js'
 
+export const PROMOTION_DAYS = [3, 7, 14, 30]
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_PATTERN = /^\+?[0-9 ]{7,20}$/
 // Each social link must point at its own network, so the footer cannot be used to send visitors elsewhere
@@ -85,6 +87,23 @@ export const validateGeneralSettings = (body) => {
     }
   }
 
+  if (body.promotions) {
+    const packages = Array.isArray(body.promotions.packages) ? body.promotions.packages : []
+    data.promotions = {
+      enabled: body.promotions.enabled === true,
+      packages: packages.map((p) => ({ days: Number(p?.days), price: Number(p?.price) })).sort((a, b) => a.days - b.days),
+    }
+    const days = data.promotions.packages.map((p) => p.days)
+    if (days.some((d) => !PROMOTION_DAYS.includes(d)) || new Set(days).size !== days.length) {
+      errors['promotions.packages'] = `Packages can be ${PROMOTION_DAYS.join(', ')} days, each once`
+    }
+    data.promotions.packages.forEach((p) => {
+      // Stripe refuses very small card charges; the cap stops a typo from charging thousands
+      if (!Number.isInteger(p.price) || p.price < 5 || p.price > 5000) errors[`promotions.price${p.days}`] = 'Enter a whole price from 5 to 5,000 SAR'
+    })
+    if (data.promotions.enabled && !data.promotions.packages.length) errors['promotions.packages'] = 'Add at least one package before turning paid promotion on'
+  }
+
   if (Object.keys(errors).length) throw ApiError.validation(errors)
   return data
 }
@@ -95,6 +114,13 @@ export const validatePage = (body) => {
   const errors = {}
   if (title.length < 3 || title.length > 80) errors.title = 'Title must be 3 to 80 characters'
   if (content.length < 50 || content.length > 20000) errors.body = 'Content must be 50 to 20,000 characters'
+  // Arabic is optional, but a page cannot have only half of it
+  const titleAr = toText(body.titleAr)
+  const bodyAr = typeof body.bodyAr === 'string' ? body.bodyAr.replace(/\r\n/g, '\n').trim() : ''
+  if (titleAr || bodyAr) {
+    if (titleAr.length < 3 || titleAr.length > 80) errors.titleAr = 'Arabic title must be 3 to 80 characters'
+    if (bodyAr.length < 50 || bodyAr.length > 20000) errors.bodyAr = 'Arabic content must be 50 to 20,000 characters'
+  }
   if (Object.keys(errors).length) throw ApiError.validation(errors)
-  return { title, body: content }
+  return { title, body: content, titleAr, bodyAr }
 }

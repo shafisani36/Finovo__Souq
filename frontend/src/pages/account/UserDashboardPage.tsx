@@ -24,6 +24,7 @@ import { dashboardService, type DashboardRange } from '../../services/dashboard.
 import type { ListingStatus } from '../../types';
 import { downloadCsv } from '../../utils/csv';
 import { formatNumber, formatPrice, formatRelative } from '../../utils/format';
+import { t, tn } from '../../i18n';
 
 const KPI_ICONS: Record<string, ReactNode> = {
   liveListings: <Layers size={18} />,
@@ -34,18 +35,18 @@ const KPI_ICONS: Record<string, ReactNode> = {
 
 /** Validated categorical order (purple, teal, amber, blue, pink); grey is reserved for "withdrawn" */
 const STATUS_COLORS: Partial<Record<ListingStatus, { label: string; color: string }>> = {
-  published: { label: 'Live', color: 'var(--series-1)' },
-  pending_review: { label: 'In review', color: 'var(--series-2)' },
-  changes_required: { label: 'Needs changes', color: 'var(--series-3)' },
-  draft: { label: 'Draft', color: 'var(--series-4)' },
-  rejected: { label: 'Rejected', color: 'var(--series-5)' },
-  withdrawn: { label: 'Withdrawn', color: 'var(--series-other)' },
+  published: { label: t('Live'), color: 'var(--series-1)' },
+  pending_review: { label: t('In review'), color: 'var(--series-2)' },
+  changes_required: { label: t('Needs changes'), color: 'var(--series-3)' },
+  draft: { label: t('Draft'), color: 'var(--series-4)' },
+  rejected: { label: t('Rejected'), color: 'var(--series-5)' },
+  withdrawn: { label: t('Withdrawn'), color: 'var(--series-other)' },
 };
 
 const LOCKED: ListingStatus[] = ['withdrawn', 'hidden', 'rejected'];
 
 export function UserDashboardPage() {
-  useDocumentTitle('Dashboard');
+  useDocumentTitle(t('Dashboard'));
   const { user } = useAuth();
   const [range, setRange] = useState<DashboardRange>('30d');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -78,23 +79,27 @@ export function UserDashboardPage() {
 
   const exportSelected = () => {
     const rows = listings.filter((l) => selected.has(l.id));
-    downloadCsv('finovo-souq-my-ads.csv', ['Title', 'Category', 'Price (SAR)', 'Views', 'Status', 'Updated'], rows.map((l) => [l.title, l.categoryName, l.price, l.views, l.status, l.updatedAt]));
+    downloadCsv(
+      'finovo-souq-my-ads.csv',
+      ['Title', 'Category', 'Price (SAR)', 'Views', 'Status', 'Updated'],
+      rows.map((l) => [l.title, l.categoryName, l.price, l.views, l.status, l.updatedAt]),
+    );
   };
 
   return (
     <>
       <PageHeader
         title={greeting(user?.name)}
-        subtitle="Here is how your ads and conversations are doing."
+        subtitle={t('Here is how your ads and conversations are doing.')}
         actions={
           <>
             <RangePicker value={range} onChange={setRange} />
             <Button icon={<Download size={16} />} onClick={exportData} disabled={!data}>
-              Export
+              {t('Export')}
             </Button>
             {canSell(user) && (
               <ButtonLink to="/account/listings/new" variant="primary" icon={<PlusCircle size={16} />}>
-                Post an ad
+                {t('Post an ad')}
               </ButtonLink>
             )}
           </>
@@ -111,9 +116,7 @@ export function UserDashboardPage() {
             <div className="action-banner span-12">
               <AlertCircle size={20} aria-hidden="true" />
               <div>
-                <strong>
-                  {data.actionRequired.length} {data.actionRequired.length === 1 ? 'ad needs' : 'ads need'} your attention
-                </strong>
+                <strong>{tn(data.actionRequired.length, '{count} ad needs your attention', '{count} ads need your attention')}</strong>
                 <p>
                   {data.actionRequired
                     .map((l) => l.title)
@@ -123,7 +126,7 @@ export function UserDashboardPage() {
                 </p>
               </div>
               <ButtonLink to="/account/listings?status=changes_required" size="sm">
-                Review
+                {t('Review')}
               </ButtonLink>
             </div>
           )}
@@ -137,8 +140,8 @@ export function UserDashboardPage() {
           <section className="card span-8">
             <div className="card-header">
               <div>
-                <h2 className="card-title">Ad performance</h2>
-                <p className="card-subtitle">Views and new messages on your ads</p>
+                <h2 className="card-title">{t('Ad performance')}</h2>
+                <p className="card-subtitle">{t('Views and new messages on your ads')}</p>
               </div>
             </div>
             {isLoading || !data ? (
@@ -147,17 +150,17 @@ export function UserDashboardPage() {
               <>
                 <div className="figure-row">
                   <p className="figure">
-                    <span className="figure__label">Views</span>
+                    <span className="figure__label">{t('Views')}</span>
                     <strong className="tabular">{formatNumber(totals.views)}</strong>
                   </p>
                   <p className="figure">
-                    <span className="figure__label">Messages</span>
+                    <span className="figure__label">{t('Messages')}</span>
                     <strong className="tabular">{formatNumber(totals.messages)}</strong>
                   </p>
                 </div>
                 <StackedBarChart
                   data={bars}
-                  label="Views and messages per day"
+                  label={t('Views and messages per day')}
                   series={[
                     { name: 'Views', color: 'var(--series-1)' },
                     { name: 'Messages', color: 'var(--series-1)', striped: true },
@@ -171,17 +174,17 @@ export function UserDashboardPage() {
             <section className="card">
               <div className="card-header">
                 <div>
-                  <h2 className="card-title">Your ads by status</h2>
-                  <p className="card-subtitle">All ads on your account</p>
+                  <h2 className="card-title">{t('Your ads by status')}</h2>
+                  <p className="card-subtitle">{t('All ads on your account')}</p>
                 </div>
               </div>
               {isLoading || !data ? (
                 <SkeletonBlock height={150} />
               ) : data.adsByStatus.length === 0 ? (
-                <p className="text-muted">You have not posted an ad yet.</p>
+                <p className="text-muted">{t('You have not posted an ad yet.')}</p>
               ) : (
                 <SegmentedBar
-                  label="Ads by status"
+                  label={t('Ads by status')}
                   segments={data.adsByStatus.map((s) => ({ label: STATUS_COLORS[s.status]?.label ?? s.status, value: s.count, color: STATUS_COLORS[s.status]?.color ?? 'var(--series-other)' }))}
                 />
               )}
@@ -189,28 +192,28 @@ export function UserDashboardPage() {
             <section className="card">
               <div className="card-header">
                 <div>
-                  <h2 className="card-title">Reply rate</h2>
-                  <p className="card-subtitle">Buyer messages you answered</p>
+                  <h2 className="card-title">{t('Reply rate')}</h2>
+                  <p className="card-subtitle">{t('Buyer messages you answered')}</p>
                 </div>
               </div>
-              {isLoading || !data ? <SkeletonBlock height={120} /> : <GaugeChart value={data.responseRate} label="Reply rate" caption="answered" />}
+              {isLoading || !data ? <SkeletonBlock height={120} /> : <GaugeChart value={data.responseRate} label={t('Reply rate')} caption="answered" />}
             </section>
           </div>
 
           <section className="card card--flush span-8">
             <div className="card-header card-header--padded">
               <div>
-                <h2 className="card-title">My ads</h2>
-                <p className="card-subtitle">Recently updated</p>
+                <h2 className="card-title">{t('My ads')}</h2>
+                <p className="card-subtitle">{t('Recently updated')}</p>
               </div>
               <div className="card-header__tools">
                 {selected.size > 0 && (
                   <Button size="sm" icon={<Download size={15} />} onClick={exportSelected}>
-                    Export {selected.size}
+                    {t('Export')} {selected.size}
                   </Button>
                 )}
                 <ButtonLink to="/account/listings" size="sm">
-                  View all
+                  {t('View all')}
                 </ButtonLink>
               </div>
             </div>
@@ -220,11 +223,11 @@ export function UserDashboardPage() {
               </div>
             ) : listings.length === 0 ? (
               <EmptyState
-                title="No ads yet"
-                text="Post your first ad. It is checked by our team before it goes live."
+                title={t('No ads yet')}
+                text={t('Post your first ad. It is checked by our team before it goes live.')}
                 action={
                   <ButtonLink to="/account/listings/new" variant="primary" icon={<PlusCircle size={16} />}>
-                    Post an ad
+                    {t('Post an ad')}
                   </ButtonLink>
                 }
               />
@@ -239,16 +242,16 @@ export function UserDashboardPage() {
                           className="check"
                           checked={allSelected}
                           onChange={() => setSelected(allSelected ? new Set() : new Set(listings.map((l) => l.id)))}
-                          aria-label="Select all ads"
+                          aria-label={t('Select all ads')}
                         />
                       </th>
-                      <th>Ad</th>
-                      <th className="table__num">Price</th>
-                      <th className="table__num">Views</th>
-                      <th>Status</th>
-                      <th>Updated</th>
+                      <th>{t('Ad')}</th>
+                      <th className="table__num">{t('Price')}</th>
+                      <th className="table__num">{t('Views')}</th>
+                      <th>{t('Status')}</th>
+                      <th>{t('Updated')}</th>
                       <th className="table__actions">
-                        <span className="sr-only">Actions</span>
+                        <span className="sr-only">{t('Actions')}</span>
                       </th>
                     </tr>
                   </thead>
@@ -256,7 +259,15 @@ export function UserDashboardPage() {
                     {listings.map((l) => (
                       <tr key={l.id} className={selected.has(l.id) ? 'is-selected' : undefined}>
                         <td className="table__check">
-                          <input type="checkbox" className="check" checked={selected.has(l.id)} onChange={() => toggle(l.id)} aria-label={`Select ${l.title}`} />
+                          <input
+                            type="checkbox"
+                            className="check"
+                            checked={selected.has(l.id)}
+                            onChange={() => toggle(l.id)}
+                            aria-label={t('Select {title}', {
+                              title: l.title,
+                            })}
+                          />
                         </td>
                         <td>
                           <span className="table-item">
@@ -266,7 +277,7 @@ export function UserDashboardPage() {
                             <span>
                               <span className="table-item__title">{l.title}</span>
                               <span className="table-item__meta">
-                                {l.categoryName} · {l.city}
+                                {l.categoryName} · {t(l.city)}
                               </span>
                             </span>
                           </span>
@@ -278,11 +289,23 @@ export function UserDashboardPage() {
                         </td>
                         <td className="text-muted">{formatRelative(l.updatedAt)}</td>
                         <td className="table__actions">
-                          <Link to={`/listings/${l.id}`} className="icon-btn icon-btn--sm" aria-label={`View ${l.title}`}>
+                          <Link
+                            to={`/listings/${l.id}`}
+                            className="icon-btn icon-btn--sm"
+                            aria-label={t('View {title}', {
+                              title: l.title,
+                            })}
+                          >
                             <Eye size={16} />
                           </Link>
                           {!LOCKED.includes(l.status) && (
-                            <Link to={`/account/listings/${l.id}/edit`} className="icon-btn icon-btn--sm" aria-label={`Edit ${l.title}`}>
+                            <Link
+                              to={`/account/listings/${l.id}/edit`}
+                              className="icon-btn icon-btn--sm"
+                              aria-label={t('Edit {title}', {
+                                title: l.title,
+                              })}
+                            >
                               <Pencil size={15} />
                             </Link>
                           )}
@@ -298,11 +321,11 @@ export function UserDashboardPage() {
           <section className="card span-4">
             <div className="card-header">
               <div>
-                <h2 className="card-title">Recent messages</h2>
-                <p className="card-subtitle">Buyers and sellers</p>
+                <h2 className="card-title">{t('Recent messages')}</h2>
+                <p className="card-subtitle">{t('Buyers and sellers')}</p>
               </div>
               <Link to="/account/messages" className="link">
-                View all
+                {t('View all')}
               </Link>
             </div>
             {isLoading || !data ? <SkeletonBlock height={220} /> : <ConversationPreviewList conversations={data.recentConversations} basePath="/account/messages" />}
@@ -311,18 +334,21 @@ export function UserDashboardPage() {
           <section className="card span-12">
             <div className="card-header">
               <div>
-                <h2 className="card-title">Saved ads</h2>
-                <p className="card-subtitle">Ads you are keeping an eye on</p>
+                <h2 className="card-title">{t('Saved ads')}</h2>
+                <p className="card-subtitle">{t('Ads you are keeping an eye on')}</p>
               </div>
               <Link to="/account/saved" className="link">
-                View all
+                {t('View all')}
               </Link>
             </div>
             {isLoading || !data ? (
               <SkeletonBlock height={200} />
             ) : data.savedListings.length === 0 ? (
               <p className="text-muted">
-                Tap the heart on any ad to save it here. <Link to="/search" className="link">Browse ads</Link>
+                {t('Tap the heart on any ad to save it here.')}{' '}
+                <Link to="/search" className="link">
+                  {t('Browse ads')}
+                </Link>
               </p>
             ) : (
               <div className="listing-grid listing-grid--compact">

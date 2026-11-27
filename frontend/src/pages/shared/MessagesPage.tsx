@@ -17,6 +17,7 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { conversationsService } from '../../services/conversations.service';
 import type { Conversation, Message } from '../../types';
 import { formatDate, formatPrice, formatRelative } from '../../utils/format';
+import { t } from '../../i18n';
 
 const MAX_LENGTH = 2000;
 const TYPING_SHOWN_MS = 3000;
@@ -26,8 +27,7 @@ const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
 /** Adds or replaces a message by id, keeping the list in time order */
-const upsertMessage = (list: Message[], message: Message) =>
-  list.some((m) => m.id === message.id) ? list.map((m) => (m.id === message.id ? message : m)) : [...list, message];
+const upsertMessage = (list: Message[], message: Message) => (list.some((m) => m.id === message.id) ? list.map((m) => (m.id === message.id ? message : m)) : [...list, message]);
 
 function ListingThumb({ conversation }: { conversation: Conversation }) {
   return conversation.listingPhotoUrl ? (
@@ -153,8 +153,8 @@ function Thread({ conversation, onConversation }: ThreadProps) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return setError('Send a JPG, PNG or WebP photo.');
-    if (file.size > MAX_PHOTO_BYTES) return setError('Photos can be up to 8 MB.');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return setError(t('Send a JPG, PNG or WebP photo.'));
+    if (file.size > MAX_PHOTO_BYTES) return setError(t('Photos can be up to 8 MB.'));
     void deliver(() => conversationsService.sendAttachment(conversation.id, file, 'image'));
   };
 
@@ -202,17 +202,17 @@ function Thread({ conversation, onConversation }: ThreadProps) {
   return (
     <div className="thread">
       <header className="thread__head">
-        <Link to="?" className="icon-btn icon-btn--sm show-md" aria-label="Back to conversations">
+        <Link to="?" className="icon-btn icon-btn--sm show-md" aria-label={t('Back to conversations')}>
           <ArrowLeft size={16} />
         </Link>
         <Avatar name={conversation.counterpart.name} src={conversation.counterpart.avatarUrl} />
         <div className="thread__who">
           <strong>{conversation.counterpart.name}</strong>
-          <span className={isTyping ? 'thread__typing' : 'thread__role'}>{isTyping ? 'typing...' : conversation.role === 'buyer' ? 'Seller' : 'Interested buyer'}</span>
+          <span className={isTyping ? 'thread__typing' : 'thread__role'}>{isTyping ? 'typing...' : conversation.role === 'buyer' ? t('Seller') : t('Interested buyer')}</span>
         </div>
         <button type="button" className="btn btn--sm btn--ghost thread__block" onClick={() => setBlockOpen(true)}>
           <UserX size={15} />
-          <span className="hide-sm">{conversation.blockedByMe ? 'Unblock' : 'Block'}</span>
+          <span className="hide-sm">{conversation.blockedByMe ? t('Unblock') : t('Block')}</span>
         </button>
       </header>
 
@@ -220,7 +220,7 @@ function Thread({ conversation, onConversation }: ThreadProps) {
         <ListingThumb conversation={conversation} />
         <span className="thread__ad-text">
           <strong>{conversation.listingTitle}</strong>
-          <span className="tabular">{conversation.listingAvailable ? formatPrice(conversation.listingPrice) : 'No longer available'}</span>
+          <span className="tabular">{conversation.listingAvailable ? formatPrice(conversation.listingPrice) : t('No longer available')}</span>
         </span>
         <ExternalLink size={15} aria-hidden="true" />
       </Link>
@@ -228,20 +228,20 @@ function Thread({ conversation, onConversation }: ThreadProps) {
       <div className="thread__messages" ref={listRef} aria-live="polite">
         <p className="thread__safety">
           <ShieldCheck size={15} aria-hidden="true" />
-          Keep chats on Finovo Souq. Never pay in advance or share bank details, and meet in a public place.
+          {t('Keep chats on Finovo Souq. Never pay in advance or share bank details, and meet in a public place.')}
         </p>
         {loading ? (
-          <LoadingState label="Loading messages..." />
+          <LoadingState label={t('Loading messages...')} />
         ) : loadError ? (
           <ErrorState error={loadError} />
         ) : (
           <>
             {hasMore && (
               <button type="button" className="thread__older" onClick={() => void loadOlder()}>
-                Load earlier messages
+                {t('Load earlier messages')}
               </button>
             )}
-            {days.length === 0 && <p className="thread__empty">Say hello and ask about the ad.</p>}
+            {days.length === 0 && <p className="thread__empty">{t('Say hello and ask about the ad.')}</p>}
             {days.map((group) => (
               <div key={group.day} className="thread__day-group">
                 <p className="thread__day">
@@ -259,10 +259,10 @@ function Thread({ conversation, onConversation }: ThreadProps) {
       {blocked ? (
         <div className="thread__blocked">
           <ShieldAlert size={18} aria-hidden="true" />
-          <span>{conversation.blockedByMe ? 'You blocked this person. They cannot message you here.' : 'You can no longer reply in this conversation.'}</span>
+          <span>{conversation.blockedByMe ? t('You blocked this person. They cannot message you here.') : t('You can no longer reply in this conversation.')}</span>
           {conversation.blockedByMe && (
             <Button size="sm" onClick={() => void toggleBlock()}>
-              Unblock
+              {t('Unblock')}
             </Button>
           )}
         </div>
@@ -275,26 +275,26 @@ function Thread({ conversation, onConversation }: ThreadProps) {
           )}
           {recorder.recording ? (
             <div className="composer__recording" role="status">
-              <button type="button" className="composer__icon" onClick={() => recorder.stop(false)} aria-label="Cancel recording">
+              <button type="button" className="composer__icon" onClick={() => recorder.stop(false)} aria-label={t('Cancel recording')}>
                 <Trash2 size={18} />
               </button>
               <span className="composer__rec-dot" aria-hidden="true" />
               <span className="composer__rec-time tabular">
                 {clock(recorder.seconds)} / {clock(MAX_VOICE_SECONDS)}
               </span>
-              <span className="composer__rec-label">Recording voice message</span>
-              <button type="button" className="composer__send" onClick={() => recorder.stop(true)} aria-label="Send voice message">
+              <span className="composer__rec-label">{t('Recording voice message')}</span>
+              <button type="button" className="composer__send" onClick={() => recorder.stop(true)} aria-label={t('Send voice message')}>
                 <Send size={18} />
               </button>
             </div>
           ) : (
             <div className="composer__row">
-              <button type="button" className="composer__icon" onClick={() => photoInput.current?.click()} disabled={sending} aria-label="Send a photo">
+              <button type="button" className="composer__icon" onClick={() => photoInput.current?.click()} disabled={sending} aria-label={t('Send a photo')}>
                 <ImagePlus size={20} />
               </button>
               <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={sendPhoto} />
               <label className="sr-only" htmlFor="message-input">
-                Message
+                {t('Message')}
               </label>
               <textarea
                 id="message-input"
@@ -302,7 +302,7 @@ function Thread({ conversation, onConversation }: ThreadProps) {
                 rows={1}
                 value={draft}
                 maxLength={MAX_LENGTH}
-                placeholder="Write a message..."
+                placeholder={t('Write a message...')}
                 onChange={(e) => onDraftChange(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -312,11 +312,11 @@ function Thread({ conversation, onConversation }: ThreadProps) {
                 }}
               />
               {draft.trim() ? (
-                <button type="submit" className="composer__send" disabled={sending} aria-label="Send message">
+                <button type="submit" className="composer__send" disabled={sending} aria-label={t('Send message')}>
                   {sending ? <span className="btn__spinner" /> : <Send size={18} />}
                 </button>
               ) : (
-                <button type="button" className="composer__send composer__send--mic" onClick={() => void recorder.start()} disabled={sending} aria-label="Record a voice message">
+                <button type="button" className="composer__send composer__send--mic" onClick={() => void recorder.start()} disabled={sending} aria-label={t('Record a voice message')}>
                   {sending ? <span className="btn__spinner" /> : <Mic size={18} />}
                 </button>
               )}
@@ -325,32 +325,44 @@ function Thread({ conversation, onConversation }: ThreadProps) {
         </form>
       )}
 
-      <Modal open={Boolean(viewer)} title="Photo" onClose={() => setViewer(null)} maxWidth={900}>
-        {viewer && <img className="photo-viewer" src={viewer} alt="Photo sent in this conversation" />}
+      <Modal open={Boolean(viewer)} title={t('Photo')} onClose={() => setViewer(null)} maxWidth={900}>
+        {viewer && <img className="photo-viewer" src={viewer} alt={t('Photo sent in this conversation')} />}
       </Modal>
 
       <Modal
         open={blockOpen}
-        title={conversation.blockedByMe ? `Unblock ${conversation.counterpart.name}?` : `Block ${conversation.counterpart.name}?`}
-        description={conversation.blockedByMe ? 'You will both be able to send messages in this conversation again.' : 'Neither of you will be able to send messages in this conversation. You can unblock at any time.'}
+        title={
+          conversation.blockedByMe
+            ? t('Unblock {name}?', {
+                name: conversation.counterpart.name,
+              })
+            : t('Block {name}?', {
+                name: conversation.counterpart.name,
+              })
+        }
+        description={
+          conversation.blockedByMe
+            ? t('You will both be able to send messages in this conversation again.')
+            : t('Neither of you will be able to send messages in this conversation. You can unblock at any time.')
+        }
         onClose={() => setBlockOpen(false)}
         footer={
           <>
-            <Button onClick={() => setBlockOpen(false)}>Cancel</Button>
+            <Button onClick={() => setBlockOpen(false)}>{t('Cancel')}</Button>
             <Button variant={conversation.blockedByMe ? 'primary' : 'danger'} onClick={() => void toggleBlock()}>
-              {conversation.blockedByMe ? 'Unblock' : 'Block'}
+              {conversation.blockedByMe ? t('Unblock') : t('Block')}
             </Button>
           </>
         }
       >
-        <p className="text-muted">Use “Report this ad” on the ad page if you think it is a scam.</p>
+        <p className="text-muted">{t('Use “Report this ad” on the ad page if you think it is a scam.')}</p>
       </Modal>
     </div>
   );
 }
 
 export function MessagesPage() {
-  useDocumentTitle('Messages');
+  useDocumentTitle(t('Messages'));
   const [searchParams] = useSearchParams();
   const activeId = searchParams.get('c');
   const [query, setQuery] = useState('');
@@ -370,13 +382,13 @@ export function MessagesPage() {
 
   return (
     <>
-      <PageHeader title="Messages" subtitle="Private chats with buyers and sellers. Only the two of you can see them." />
+      <PageHeader title={t('Messages')} subtitle={t('Private chats with buyers and sellers. Only the two of you can see them.')} />
       <div className={`messages card${active ? ' messages--open' : ''}`}>
-        <aside className="messages__list" aria-label="Conversations">
+        <aside className="messages__list" aria-label={t('Conversations')}>
           <label className="messages__search">
             <Search size={16} aria-hidden="true" />
-            <span className="sr-only">Search conversations</span>
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name or ad" />
+            <span className="sr-only">{t('Search conversations')}</span>
+            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('Search by name or ad')} />
           </label>
           {conversations.error ? (
             <ErrorState error={conversations.error} onRetry={conversations.reload} />
@@ -387,7 +399,11 @@ export function MessagesPage() {
               ))}
             </div>
           ) : visible.length === 0 ? (
-            <EmptyState icon={<MessageSquare size={26} />} title={q ? 'No matches' : 'No conversations yet'} text={q ? 'Try another name or ad title.' : 'When you message a seller, or a buyer messages you, the chat appears here.'} />
+            <EmptyState
+              icon={<MessageSquare size={26} />}
+              title={q ? t('No matches') : t('No conversations yet')}
+              text={q ? t('Try another name or ad title.') : t('When you message a seller, or a buyer messages you, the chat appears here.')}
+            />
           ) : (
             <ul>
               {visible.map((c) => (
@@ -405,8 +421,8 @@ export function MessagesPage() {
                       <span className="conversation__ad">{c.listingTitle}</span>
                       <span className="conversation__row">
                         <span className="conversation__text">
-                          {c.lastMessageMine && c.lastMessage && 'You: '}
-                          {c.lastMessage || 'No messages yet'}
+                          {c.lastMessageMine && c.lastMessage && t('You: ')}
+                          {c.lastMessage || t('No messages yet')}
                         </span>
                         {c.unreadCount > 0 && <span className="count-pill">{c.unreadCount}</span>}
                       </span>
@@ -421,7 +437,7 @@ export function MessagesPage() {
           {active ? (
             <Thread key={active.id} conversation={active} onConversation={upsert} />
           ) : (
-            <EmptyState icon={<MessageSquare size={26} />} title="Select a conversation" text="Choose a chat to read and reply. Text, photos and voice messages are all private." />
+            <EmptyState icon={<MessageSquare size={26} />} title={t('Select a conversation')} text={t('Choose a chat to read and reply. Text, photos and voice messages are all private.')} />
           )}
         </section>
       </div>

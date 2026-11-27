@@ -5,6 +5,7 @@ import type { FaqItem } from '../../content/faq';
 import { useAsync } from '../../hooks/useAsync';
 import { settingsService } from '../../services/settings.service';
 import { revealDelay } from './reveal';
+import { t } from '../../i18n';
 
 /**
  * Landing page FAQ: a support card on the left and tall panels that widen when opened.
@@ -24,9 +25,9 @@ export function FaqShowcase({ items }: { items: FaqItem[] }) {
         <div className="faq-show__head" data-reveal>
           <p className="eyebrow">FAQ</p>
           <h2 id={`${baseId}-title`} className="faq-show__title">
-            Questions people often ask
+            {t('Questions people often ask')}
           </h2>
-          <p className="faq-show__text">Short answers about buying, selling and staying safe on Finovo Souq.</p>
+          <p className="faq-show__text">{t('Short answers about buying, selling and staying safe on Finovo Souq.')}</p>
         </div>
 
         <div className="faq-show__grid">
@@ -35,8 +36,8 @@ export function FaqShowcase({ items }: { items: FaqItem[] }) {
               <span className="faq-show__support-icon">
                 <HelpCircle size={22} />
               </span>
-              <h3>Still have a question?</h3>
-              <p>Our support team answers within one working day. Tell us what you need and we will help you out.</p>
+              <h3>{t('Still have a question?')}</h3>
+              <p>{t('Our support team answers within one working day. Tell us what you need and we will help you out.')}</p>
               {supportEmail && (
                 <a href={`mailto:${supportEmail}`} className="faq-show__mail">
                   <Mail size={16} /> {supportEmail}
@@ -45,16 +46,16 @@ export function FaqShowcase({ items }: { items: FaqItem[] }) {
             </div>
             <div className="faq-show__support-actions">
               <Link to="/contact" className="btn btn--night btn--block">
-                Contact us
+                {t('Contact us')}
               </Link>
               <Link to="/faq" className="faq-show__all">
-                See all questions <ArrowRight size={15} />
+                {t('See all questions')} <ArrowRight size={15} />
               </Link>
             </div>
           </aside>
 
           {/* Wide screens: expanding panels */}
-          <div className="faq-panels" role="tablist" aria-label="Frequently asked questions" data-reveal style={revealDelay(1)}>
+          <div className="faq-panels" role="tablist" aria-label={t('Frequently asked questions')} data-reveal style={revealDelay(1)}>
             {items.map((item, i) => {
               const isActive = active === i;
               return (
@@ -85,7 +86,9 @@ export function FaqShowcase({ items }: { items: FaqItem[] }) {
                   <div id={`${baseId}-panel-${i}`} role="tabpanel" aria-labelledby={`${baseId}-tab-${i}`} hidden={!isActive} className="faq-panel__content">
                     <div>
                       <div className="faq-panel__top">
-                        <span className="faq-panel__badge">Question {number(i)}</span>
+                        <span className="faq-panel__badge">
+                          {t('Question')} {number(i)}
+                        </span>
                         <span className="faq-panel__close" aria-hidden="true">
                           <Plus size={16} strokeWidth={2.6} />
                         </span>
@@ -94,8 +97,8 @@ export function FaqShowcase({ items }: { items: FaqItem[] }) {
                       <p>{item.answer}</p>
                     </div>
                     <div className="faq-panel__foot">
-                      <span>Choose another question on the side</span>
-                      <span className="faq-panel__tag">Finovo Souq help</span>
+                      <span>{t('Choose another question on the side')}</span>
+                      <span className="faq-panel__tag">{t('Finovo Souq help')}</span>
                     </div>
                   </div>
                 </div>

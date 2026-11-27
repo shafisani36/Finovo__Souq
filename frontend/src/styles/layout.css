@@ -1502,3 +1502,9 @@
     margin-block-end: var(--space-3);
   }
 }
+
+.auth-panel__top-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}

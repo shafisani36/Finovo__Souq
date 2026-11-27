@@ -9,13 +9,14 @@ import { useDocumentTitle } from '../../../hooks/useDocumentTitle';
 import { AuthLayout } from '../../../layouts/AuthLayout';
 import { authService } from '../../../services/auth.service';
 import { EMAIL_PATTERN, PASSWORD_RULES, passwordTooLong } from '../validation';
+import { t } from '../../../i18n';
 
 const RESEND_SECONDS = 60;
 
 type FormErrors = Partial<Record<'email' | 'otp' | 'password' | 'confirm' | 'form', string>>;
 
 export function ForgotPasswordPage() {
-  useDocumentTitle('Reset password');
+  useDocumentTitle(t('Reset password'));
   const navigate = useNavigate();
   const toast = useToast();
   const [step, setStep] = useState<'email' | 'code' | 'password'>('email');
@@ -81,16 +82,16 @@ export function ForgotPasswordPage() {
 
   const resetPassword = async () => {
     const next: FormErrors = {};
-    if (PASSWORD_RULES.some((rule) => !rule.test(form.password))) next.password = 'Your password does not meet all the rules below.';
-    else if (passwordTooLong(form.password)) next.password = 'Password is too long.';
-    if (form.confirm !== form.password) next.confirm = 'Passwords do not match.';
+    if (PASSWORD_RULES.some((rule) => !rule.test(form.password))) next.password = t('Your password does not meet all the rules below.');
+    else if (passwordTooLong(form.password)) next.password = t('Password is too long.');
+    if (form.confirm !== form.password) next.confirm = t('Passwords do not match.');
     setErrors(next);
     if (Object.keys(next).length) return;
 
     setSubmitting(true);
     try {
       await authService.resetPassword({ email: form.email.trim().toLowerCase(), resetToken, password: form.password });
-      toast.show({ title: 'Password changed', message: 'Sign in with your new password.' });
+      toast.show({ title: t('Password changed'), message: t('Sign in with your new password.') });
       navigate('/login', { replace: true });
     } catch (error) {
       if (error instanceof ApiError && !Object.keys(error.fieldErrors).length) {
@@ -105,9 +106,15 @@ export function ForgotPasswordPage() {
   };
 
   const current = {
-    email: { subtitle: 'Enter the email address on your account and we will send you a 6-digit code.', button: 'Send code', submit: sendCode },
-    code: { subtitle: `If an account exists for ${form.email.trim()}, we sent a 6-digit code to it. It expires in 10 minutes.`, button: 'Verify code', submit: verifyCode },
-    password: { subtitle: 'Code verified. Choose a new password for your account.', button: 'Change password', submit: resetPassword },
+    email: { subtitle: t('Enter the email address on your account and we will send you a 6-digit code.'), button: 'Send code', submit: sendCode },
+    code: {
+      subtitle: t('If an account exists for {value}, we sent a 6-digit code to it. It expires in 10 minutes.', {
+        value: form.email.trim(),
+      }),
+      button: 'Verify code',
+      submit: verifyCode,
+    },
+    password: { subtitle: t('Code verified. Choose a new password for your account.'), button: 'Change password', submit: resetPassword },
   }[step];
 
   const handleSubmit = (event: FormEvent) => {
@@ -116,11 +123,7 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <AuthLayout
-      showTabs={false}
-      title="Reset your password"
-      subtitle={current.subtitle}
-    >
+    <AuthLayout showTabs={false} title={t('Reset your password')} subtitle={current.subtitle}>
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
         {errors.form && (
           <div className="alert alert--danger" role="alert">
@@ -129,17 +132,27 @@ export function ForgotPasswordPage() {
         )}
 
         {step === 'email' && (
-          <InputField label="Email address" type="email" autoComplete="email" icon={<Mail size={17} />} placeholder="you@example.com" value={form.email} onChange={(e) => set('email')(e.target.value)} error={errors.email} required />
+          <InputField
+            label={t('Email address')}
+            type="email"
+            autoComplete="email"
+            icon={<Mail size={17} />}
+            placeholder={t('you@example.com')}
+            value={form.email}
+            onChange={(e) => set('email')(e.target.value)}
+            error={errors.email}
+            required
+          />
         )}
 
         {step === 'code' && (
           <InputField
-            label="Code from the email"
+            label={t('Code from the email')}
             inputMode="numeric"
             autoComplete="one-time-code"
             maxLength={6}
             icon={<KeyRound size={17} />}
-            placeholder="6-digit code"
+            placeholder={t('6-digit code')}
             value={form.otp}
             onChange={(e) => set('otp')(e.target.value.replace(/\D/g, ''))}
             error={errors.otp}
@@ -152,7 +165,7 @@ export function ForgotPasswordPage() {
           <>
             <div className="form-grid">
               <InputField
-                label="New password"
+                label={t('New password')}
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 icon={<Lock size={17} />}
@@ -161,21 +174,30 @@ export function ForgotPasswordPage() {
                 error={errors.password}
                 required
                 suffix={
-                  <button type="button" className="icon-btn icon-btn--sm" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                  <button type="button" className="icon-btn icon-btn--sm" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? t('Hide password') : t('Show password')}>
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 }
               />
-              <InputField label="Confirm password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" icon={<Lock size={17} />} value={form.confirm} onChange={(e) => set('confirm')(e.target.value)} error={errors.confirm} required />
+              <InputField
+                label={t('Confirm password')}
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                icon={<Lock size={17} />}
+                value={form.confirm}
+                onChange={(e) => set('confirm')(e.target.value)}
+                error={errors.confirm}
+                required
+              />
             </div>
-            <ul className="password-rules" aria-label="Password rules">
+            <ul className="password-rules" aria-label={t('Password rules')}>
               {PASSWORD_RULES.map((rule) => {
                 const met = rule.test(form.password);
                 return (
                   <li key={rule.label} className={met ? 'is-met' : undefined}>
                     <Check size={13} strokeWidth={3} aria-hidden="true" />
                     {rule.label}
-                    <span className="sr-only">{met ? ' (done)' : ' (missing)'}</span>
+                    <span className="sr-only">{met ? t(' (done)') : t(' (missing)')}</span>
                   </li>
                 );
               })}
@@ -190,13 +212,20 @@ export function ForgotPasswordPage() {
         {step === 'code' && (
           <p className="auth-form__switch">
             <button type="button" className="link link--button" onClick={() => void sendCode()} disabled={submitting || resendIn > 0}>
-              {resendIn > 0 ? `Send a new code in ${resendIn}s` : 'Send a new code'}
+              {resendIn > 0
+                ? t('Send a new code in {resendIn}s', {
+                    resendIn,
+                  })
+                : t('Send a new code')}
             </button>
           </p>
         )}
         {step === 'email' && (
           <p className="auth-form__switch">
-            Remembered it? <Link to="/login" className="link">Sign in</Link>
+            {t('Remembered it?')}{' '}
+            <Link to="/login" className="link">
+              {t('Sign in')}
+            </Link>
           </p>
         )}
       </form>

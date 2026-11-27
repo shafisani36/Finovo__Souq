@@ -69,7 +69,10 @@ describe('API', { skip: !enabled && 'Set TEST_MONGODB_URI to run the integration
     const other = await request.post('/api/v1/auth/register').send({ name: 'Buyer Two', email: 'other@test.local', password: PASSWORD })
     tokens.other = other.body.data.accessToken
 
-    const seller = await request.post('/api/v1/auth/register').send({ name: 'Seller One', email: 'seller@test.local', password: PASSWORD, accountType: 'seller' })
+    const badPhone = await request.post('/api/v1/auth/register').send({ name: 'Seller One', email: 'seller@test.local', password: PASSWORD, accountType: 'seller', phone: '12345' })
+    assert.equal(badPhone.status, 400, 'a phone number must be a Saudi mobile')
+
+    const seller = await request.post('/api/v1/auth/register').send({ name: 'Seller One', email: 'seller@test.local', password: PASSWORD, accountType: 'seller', phone: '+966512345678' })
     assert.equal(seller.status, 201)
     assert.equal(seller.body.data.pendingApproval, true)
     assert.equal(seller.body.data.accessToken, undefined)
@@ -225,6 +228,7 @@ describe('API', { skip: !enabled && 'Set TEST_MONGODB_URI to run the integration
   test('a seller cannot change another seller\'s ad', async () => {
     await User.create({ name: 'Seller Two', email: 'seller2@test.local', password: PASSWORD, accountType: 'seller' })
     tokens.seller2 = (await login('seller2@test.local')).body.data.accessToken
+    assert.equal((await request.patch('/api/v1/users/me').set(as('seller2')).send({ phone: '0500' })).status, 400)
     assert.equal((await request.patch(`/api/v1/listings/${listingId}`).set(as('seller2')).send({ price: 1 })).status, 404)
     assert.equal((await request.post(`/api/v1/listings/${listingId}/withdraw`).set(as('seller2'))).status, 404)
     assert.equal((await Listing.findById(listingId).lean()).price, 72000)
@@ -250,5 +254,93 @@ describe('API', { skip: !enabled && 'Set TEST_MONGODB_URI to run the integration
     assert.equal(suspended.status, 200)
     assert.equal((await request.get('/api/v1/users/me').set(as('other'))).status, 401)
     assert.equal((await login('other@test.local')).status, 403)
+  })
+
+  test('a deletion request can be cancelled, and an admin deletion erases the account', async () => {
+    const requested = await request.post('/api/v1/users/me/deletion-request').set(as('buyer')).send({ reason: 'Moving abroad' })
+    assert.equal(requested.status, 200)
+    assert.equal((await request.delete('/api/v1/users/me/deletion-request').set(as('buyer'))).status, 200)
+    assert.equal((await User.findOne({ email: 'buyer@test.local' }).lean()).deletionRequestedAt, null)
+
+    await request.post('/api/v1/users/me/deletion-request').set(as('buyer')).send({ reason: 'Moving abroad' })
+    const queue = await request.get('/api/v1/admin/users?deletion=requested').set(as('admin'))
+    const buyer = queue.body.data.items.find((u) => u.email === 'buyer@test.local')
+    assert.equal(buyer.deletionReason, 'Moving abroad')
+
+    assert.equal((await request.post(`/api/v1/admin/users/${buyer.id}/delete`).set(as('admin')).send({ reason: 'x' })).status, 400)
+    const deleted = await request.post(`/api/v1/admin/users/${buyer.id}/delete`).set(as('admin')).send({ reason: 'User asked for deletion' })
+    assert.equal(deleted.status, 200)
+    assert.equal(deleted.body.data.status, 'deleted')
+    assert.equal(deleted.body.data.name, 'Deleted user')
+    assert.notEqual(deleted.body.data.email, 'buyer@test.local')
+
+    assert.equal((await request.get('/api/v1/users/me').set(as('buyer'))).status, 401)
+    assert.equal((await login('buyer@test.local')).status, 401)
+    const thread = await request.get(`/api/v1/conversations/${conversationId}/messages`).set(as('seller'))
+    assert.ok(thread.body.data.items.every((m) => m.sender !== buyer.id || m.body === ''))
+    assert.equal((await request.post(`/api/v1/admin/users/${buyer.id}/delete`).set(as('admin')).send({ reason: 'Again please' })).status, 409)
+  })
+
+  test('a paid Stripe checkout waits for an admin, then features the ad once', async () => {
+    const Payment = (await import('../src/modules/payments/payment.model.js')).default
+    const { stripe } = await import('../src/services/stripe.service.js')
+    const seller = await User.findOne({ email: 'seller@test.local' })
+    const payment = await Payment.create({ user: seller._id, listing: listingId, days: 7, amount: 4900, stripeSessionId: 'cs_test_paid' })
+
+    const event = (type, object) => JSON.stringify({ id: `evt_${type}`, object: 'event', type, data: { object } })
+    const send = (payload, secret = process.env.STRIPE_WEBHOOK_SECRET) => request.post('/api/v1/payments/stripe/webhook')
+      .set('content-type', 'application/json')
+      .set('stripe-signature', stripe().webhooks.generateTestHeaderString({ payload, secret }))
+      .send(payload)
+
+    const paid = event('checkout.session.completed', { id: 'cs_test_paid', object: 'checkout.session', payment_status: 'paid', amount_total: 4900, currency: 'sar', payment_intent: 'pi_test' })
+    assert.equal((await send(paid, 'whsec_wrong')).status, 400, 'unsigned events are refused')
+    assert.equal((await send(paid)).status, 200)
+    assert.equal((await send(paid)).status, 200, 'a repeated event is accepted and ignored')
+
+    const recorded = await Payment.findById(payment._id).lean()
+    assert.equal(recorded.status, 'paid')
+    assert.match(recorded.invoiceNumber, /^FS-\d{4}-000001$/)
+    assert.equal((await Listing.findById(listingId).lean()).featuredUntil, null, 'nothing is featured before an admin approves')
+
+    const queue = await request.get('/api/v1/admin/payments?status=paid').set(as('admin'))
+    assert.equal(queue.body.data.items.length, 1)
+    assert.equal(queue.body.data.items[0].amount, 49)
+
+    assert.equal((await request.post(`/api/v1/admin/payments/${payment.id}/approve`).set(as('seller'))).status, 403)
+    const approved = await request.post(`/api/v1/admin/payments/${payment.id}/approve`).set(as('admin'))
+    assert.equal(approved.status, 200)
+    assert.equal(approved.body.data.status, 'approved')
+    const featuredUntil = (await Listing.findById(listingId).lean()).featuredUntil
+    assert.ok(featuredUntil > new Date(Date.now() + 6.9 * 864e5))
+    assert.equal((await request.post(`/api/v1/admin/payments/${payment.id}/approve`).set(as('admin'))).status, 409, 'a payment is approved once')
+    assert.equal((await request.post(`/api/v1/admin/payments/${payment.id}/reject`).set(as('admin')).send({ reason: 'Too late now' })).status, 409)
+
+    const other = await request.post('/api/v1/payments/promotions').set(as('seller2')).send({ listingId, days: 7 })
+    assert.equal(other.status, 409, 'sellers can only promote their own ads')
+    assert.equal((await request.post('/api/v1/payments/promotions').set(as('seller')).send({ listingId, days: 5 })).status, 400)
+  })
+
+  test('a business store goes public only after an admin checks its registration', async () => {
+    assert.equal((await request.post('/api/v1/stores/mine').set(as('seller')).send({ name: 'Riyadh Motors', commercialRegistration: '12345' })).status, 400)
+    const created = await request.post('/api/v1/stores/mine').set(as('seller')).send({ name: 'Riyadh Motors', city: 'Riyadh', commercialRegistration: '1010123456' })
+    assert.equal(created.status, 201)
+    assert.equal(created.body.data.status, 'pending')
+    assert.equal((await request.post('/api/v1/stores/mine').set(as('seller')).send({ name: 'Second', commercialRegistration: '1010123457' })).status, 409, 'one store per seller')
+
+    const slug = created.body.data.slug
+    assert.equal((await request.get(`/api/v1/stores/${slug}`)).status, 404, 'pending stores are private')
+    assert.equal((await request.post(`/api/v1/admin/stores/${created.body.data.id}/verify`).set(as('seller'))).status, 403)
+    assert.equal((await request.post(`/api/v1/admin/stores/${created.body.data.id}/verify`).set(as('admin'))).status, 200)
+
+    const page = await request.get(`/api/v1/stores/${slug}`)
+    assert.equal(page.status, 200)
+    assert.equal(page.body.data.commercialRegistration, undefined, 'the CR number stays private')
+    const seller = await User.findOne({ email: 'seller@test.local' })
+    const profile = await request.get(`/api/v1/sellers/${seller.id}`)
+    assert.equal(profile.body.data.trust.business.slug, slug)
+
+    const renamed = await request.patch('/api/v1/stores/mine').set(as('seller')).send({ name: 'Riyadh Motors Co' })
+    assert.equal(renamed.body.data.status, 'pending', 'a new name is checked again')
   })
 })

@@ -6,13 +6,14 @@ import { LISTING_TYPE_LABELS } from '../../utils/format';
 import { CategoryIcon } from '../listings/CategoryIcon';
 import { Button } from '../ui/Button';
 import { InputField, SelectField, TextareaField } from '../ui/Field';
+import { t } from '../../i18n';
 
 const MAX_DEPTH = 4;
 const LISTING_TYPES: ListingType[] = ['sale', 'rent', 'service'];
 const INPUT_TYPES = [
-  { value: 'select', label: 'List of options' },
-  { value: 'number', label: 'Number' },
-  { value: 'text', label: 'Free text' },
+  { value: 'select', label: t('List of options') },
+  { value: 'number', label: t('Number') },
+  { value: 'text', label: t('Free text') },
 ];
 
 /** Field row while editing: options and limits stay strings until the form is saved */
@@ -48,7 +49,12 @@ const fromDraft = (d: FieldDraft): CategoryField => ({
   inputType: d.inputType,
   required: d.required,
   filterable: d.inputType !== 'text' && d.filterable,
-  ...(d.inputType === 'select' && { options: d.options.split('\n').map((o) => o.trim()).filter(Boolean) }),
+  ...(d.inputType === 'select' && {
+    options: d.options
+      .split('\n')
+      .map((o) => o.trim())
+      .filter(Boolean),
+  }),
   ...(d.inputType === 'number' && {
     ...(d.unit.trim() && { unit: d.unit.trim() }),
     ...(d.min !== '' && { min: Number(d.min) }),
@@ -76,6 +82,7 @@ interface CategoryFormProps {
 
 export function CategoryForm({ categories, category, defaultParentId, onSubmit, onCancel }: CategoryFormProps) {
   const [name, setName] = useState(category?.name ?? '');
+  const [nameAr, setNameAr] = useState(category?.nameAr ?? '');
   const [slug, setSlug] = useState(category?.slug ?? '');
   const [parentId, setParentId] = useState(category ? (category.parentId ?? '') : (defaultParentId ?? ''));
   const [description, setDescription] = useState(category?.description ?? '');
@@ -87,14 +94,12 @@ export function CategoryForm({ categories, category, defaultParentId, onSubmit, 
   const [saving, setSaving] = useState(false);
 
   const parent = categories.find((c) => c.id === parentId);
-  const inherited = category ? category.inheritedFields : (parent ? [...parent.inheritedFields.filter((f) => !parent.fields.some((o) => o.fieldKey === f.fieldKey)), ...parent.fields] : []);
+  const inherited = category ? category.inheritedFields : parent ? [...parent.inheritedFields.filter((f) => !parent.fields.some((o) => o.fieldKey === f.fieldKey)), ...parent.fields] : [];
   const inheritedTypes = parent?.effectiveListingTypes ?? ['sale'];
 
   // A category cannot move under itself or its own subcategories, nor too deep, nor under a category that holds ads
   const height = category ? Math.max(0, ...categories.filter((c) => c.path.includes(category.id)).map((c) => c.depth - category.depth)) : 0;
-  const parentOptions = categories.filter(
-    (c) => !(category && c.path.includes(category.id)) && c.depth + 1 + height < MAX_DEPTH && (c.directListings === 0 || c.id === category?.parentId),
-  );
+  const parentOptions = categories.filter((c) => !(category && c.path.includes(category.id)) && c.depth + 1 + height < MAX_DEPTH && (c.directListings === 0 || c.id === category?.parentId));
 
   const updateField = (uid: string, changes: Partial<FieldDraft>) => setFields((list) => list.map((f) => (f.uid === uid ? { ...f, ...changes } : f)));
   const moveField = (index: number, by: number) =>
@@ -103,7 +108,8 @@ export function CategoryForm({ categories, category, defaultParentId, onSubmit, 
       [next[index], next[index + by]] = [next[index + by], next[index]];
       return next;
     });
-  const addField = () => setFields((list) => [...list, { uid: crypto.randomUUID(), fieldKey: '', label: '', inputType: 'select', required: false, filterable: true, options: '', unit: '', min: '', max: '' }]);
+  const addField = () =>
+    setFields((list) => [...list, { uid: crypto.randomUUID(), fieldKey: '', label: '', inputType: 'select', required: false, filterable: true, options: '', unit: '', min: '', max: '' }]);
 
   const submit = async () => {
     setSaving(true);
@@ -111,6 +117,7 @@ export function CategoryForm({ categories, category, defaultParentId, onSubmit, 
     try {
       await onSubmit({
         name: name.trim(),
+        nameAr: nameAr.trim(),
         ...(category && slug.trim() !== category.slug && { slug: slug.trim() }),
         parentId: parentId || null,
         description: description.trim(),
@@ -135,24 +142,51 @@ export function CategoryForm({ categories, category, defaultParentId, onSubmit, 
       )}
 
       <div className="form-grid">
-        <InputField label="Name" required value={name} onChange={(e) => setName(e.target.value)} error={errors.name} maxLength={60} placeholder="e.g. Motorcycles" />
+        <InputField label={t('Name')} required value={name} onChange={(e) => setName(e.target.value)} error={errors.name} maxLength={60} placeholder={t('e.g. Motorcycles')} />
+        <InputField
+          label={t('Arabic name')}
+          dir="rtl"
+          lang="ar"
+          value={nameAr}
+          onChange={(e) => setNameAr(e.target.value)}
+          error={errors.nameAr}
+          maxLength={60}
+          placeholder="مثال: دراجات نارية"
+          hint={t('Shown on the Arabic site.')}
+        />
         <SelectField
-          label="Parent category"
+          label={t('Parent category')}
           value={parentId}
           onChange={setParentId}
           error={errors.parentId}
-          options={[{ value: '', label: 'None (top level)' }, ...parentOptions.map((c) => ({ value: c.id, label: `${' '.repeat(c.depth)}${c.name}` }))]}
-          hint="Categories that already hold ads cannot get subcategories."
+          options={[{ value: '', label: t('None (top level)') }, ...parentOptions.map((c) => ({ value: c.id, label: `${' '.repeat(c.depth)}${c.name}` }))]}
+          hint={t('Categories that already hold ads cannot get subcategories.')}
         />
-        {category && <InputField label="Web address (slug)" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase())} error={errors.slug} hint="Changing it breaks old links and saved searches." />}
-        <TextareaField wrapperClassName="form-grid__full" label="Short description" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} error={errors.description} maxLength={160} />
+        {category && (
+          <InputField
+            label={t('Web address (slug)')}
+            value={slug}
+            onChange={(e) => setSlug(e.target.value.toLowerCase())}
+            error={errors.slug}
+            hint={t('Changing it breaks old links and saved searches.')}
+          />
+        )}
+        <TextareaField
+          wrapperClassName="form-grid__full"
+          label={t('Short description')}
+          rows={2}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          error={errors.description}
+          maxLength={160}
+        />
       </div>
 
       <div className="category-form__section">
-        <p className="field__label">Icon</p>
-        <div className="icon-grid" role="radiogroup" aria-label="Icon">
+        <p className="field__label">{t('Icon')}</p>
+        <div className="icon-grid" role="radiogroup" aria-label={t('Icon')}>
           <button type="button" role="radio" aria-checked={!icon} className="icon-grid__item icon-grid__item--text" onClick={() => setIcon('')}>
-            {parentId ? 'Same as parent' : 'Default'}
+            {parentId ? t('Same as parent') : t('Default')}
           </button>
           {CATEGORY_ICON_KEYS.map((key) => (
             <button key={key} type="button" role="radio" aria-checked={icon === key} aria-label={key} title={key} className="icon-grid__item" onClick={() => setIcon(key)}>
@@ -164,7 +198,7 @@ export function CategoryForm({ categories, category, defaultParentId, onSubmit, 
       </div>
 
       <div className="category-form__section">
-        <p className="field__label">Ad types</p>
+        <p className="field__label">{t('Ad types')}</p>
         <div className="category-form__checks">
           {LISTING_TYPES.map((type) => (
             <label key={type} className="checkbox">
@@ -173,24 +207,31 @@ export function CategoryForm({ categories, category, defaultParentId, onSubmit, 
             </label>
           ))}
         </div>
-        <span className="field__hint">{listingTypes.length ? 'Only these types are allowed here.' : `None ticked: same as the parent (${inheritedTypes.map((t) => LISTING_TYPE_LABELS[t]).join(', ')}).`}</span>
+        <span className="field__hint">
+          {listingTypes.length
+            ? t('Only these types are allowed here.')
+            : t('None ticked: same as the parent ({value}).', {
+                value: inheritedTypes.map((t) => LISTING_TYPE_LABELS[t]).join(', '),
+              })}
+        </span>
         {errors.listingTypes && <span className="field__error">{errors.listingTypes}</span>}
       </div>
 
       <div className="category-form__section">
         <div className="category-form__fields-head">
           <div>
-            <p className="field__label">Ad details</p>
-            <span className="field__hint">Questions sellers answer in this category and every subcategory. Filterable ones become search filters.</span>
+            <p className="field__label">{t('Ad details')}</p>
+            <span className="field__hint">{t('Questions sellers answer in this category and every subcategory. Filterable ones become search filters.')}</span>
           </div>
           <Button size="sm" icon={<Plus size={14} />} onClick={addField}>
-            Add detail
+            {t('Add detail')}
           </Button>
         </div>
 
         {inherited.length > 0 && (
           <p className="category-form__inherited">
-            Inherited from parent: {inherited.map((f) => f.label).join(', ')}. Add a detail with the same key to change one here.
+            {t('Inherited from parent:')} {inherited.map((f) => f.label).join(', ')}
+            {t('. Add a detail with the same key to change one here.')}
           </p>
         )}
         {errors.fields && <span className="field__error">{errors.fields}</span>}
@@ -199,50 +240,58 @@ export function CategoryForm({ categories, category, defaultParentId, onSubmit, 
           const err = (name: string) => errors[`fields.${index}.${name}`];
           return (
             <fieldset key={f.uid} className="field-editor">
-              <legend className="sr-only">Detail {index + 1}</legend>
+              <legend className="sr-only">
+                {t('Detail')} {index + 1}
+              </legend>
               <div className="field-editor__row">
                 <InputField
-                  label="Label"
+                  label={t('Label')}
                   value={f.label}
                   onChange={(e) => updateField(f.uid, { label: e.target.value, ...(f.fieldKey === keyFromLabel(f.label) && { fieldKey: keyFromLabel(e.target.value) }) })}
                   error={err('label')}
-                  placeholder="e.g. Fuel type"
+                  placeholder={t('e.g. Fuel type')}
                 />
-                <InputField label="Key" value={f.fieldKey} onChange={(e) => updateField(f.uid, { fieldKey: e.target.value })} error={err('fieldKey')} placeholder="fuelType" />
-                <SelectField label="Answer type" value={f.inputType} onChange={(value) => updateField(f.uid, { inputType: value as FieldDraft['inputType'] })} options={INPUT_TYPES} error={err('inputType')} />
+                <InputField label={t('Key')} value={f.fieldKey} onChange={(e) => updateField(f.uid, { fieldKey: e.target.value })} error={err('fieldKey')} placeholder="fuelType" />
+                <SelectField
+                  label={t('Answer type')}
+                  value={f.inputType}
+                  onChange={(value) => updateField(f.uid, { inputType: value as FieldDraft['inputType'] })}
+                  options={INPUT_TYPES}
+                  error={err('inputType')}
+                />
                 <div className="field-editor__tools">
-                  <button type="button" className="icon-btn icon-btn--sm" onClick={() => moveField(index, -1)} disabled={index === 0} aria-label="Move up">
+                  <button type="button" className="icon-btn icon-btn--sm" onClick={() => moveField(index, -1)} disabled={index === 0} aria-label={t('Move up')}>
                     <ArrowUp size={14} />
                   </button>
-                  <button type="button" className="icon-btn icon-btn--sm" onClick={() => moveField(index, 1)} disabled={index === fields.length - 1} aria-label="Move down">
+                  <button type="button" className="icon-btn icon-btn--sm" onClick={() => moveField(index, 1)} disabled={index === fields.length - 1} aria-label={t('Move down')}>
                     <ArrowDown size={14} />
                   </button>
-                  <button type="button" className="icon-btn icon-btn--sm" onClick={() => setFields((list) => list.filter((x) => x.uid !== f.uid))} aria-label="Remove detail">
+                  <button type="button" className="icon-btn icon-btn--sm" onClick={() => setFields((list) => list.filter((x) => x.uid !== f.uid))} aria-label={t('Remove detail')}>
                     <Trash2 size={14} />
                   </button>
                 </div>
               </div>
 
               {f.inputType === 'select' && (
-                <TextareaField label="Options (one per line)" rows={3} value={f.options} onChange={(e) => updateField(f.uid, { options: e.target.value })} error={err('options')} />
+                <TextareaField label={t('Options (one per line)')} rows={3} value={f.options} onChange={(e) => updateField(f.uid, { options: e.target.value })} error={err('options')} />
               )}
               {f.inputType === 'number' && (
                 <div className="field-editor__row field-editor__row--numbers">
-                  <InputField label="Unit" value={f.unit} onChange={(e) => updateField(f.uid, { unit: e.target.value })} maxLength={10} placeholder="km, m²" />
-                  <InputField label="Minimum" type="number" value={f.min} onChange={(e) => updateField(f.uid, { min: e.target.value })} error={err('min')} />
-                  <InputField label="Maximum" type="number" value={f.max} onChange={(e) => updateField(f.uid, { max: e.target.value })} error={err('max')} />
+                  <InputField label={t('Unit')} value={f.unit} onChange={(e) => updateField(f.uid, { unit: e.target.value })} maxLength={10} placeholder={t('km, m²')} />
+                  <InputField label={t('Minimum')} type="number" value={f.min} onChange={(e) => updateField(f.uid, { min: e.target.value })} error={err('min')} />
+                  <InputField label={t('Maximum')} type="number" value={f.max} onChange={(e) => updateField(f.uid, { max: e.target.value })} error={err('max')} />
                 </div>
               )}
 
               <div className="category-form__checks">
                 <label className="checkbox">
                   <input type="checkbox" checked={f.required} onChange={(e) => updateField(f.uid, { required: e.target.checked })} />
-                  Required
+                  {t('Required')}
                 </label>
                 {f.inputType !== 'text' && (
                   <label className="checkbox">
                     <input type="checkbox" checked={f.filterable} onChange={(e) => updateField(f.uid, { filterable: e.target.checked })} />
-                    Show as a search filter
+                    {t('Show as a search filter')}
                   </label>
                 )}
               </div>
@@ -253,13 +302,13 @@ export function CategoryForm({ categories, category, defaultParentId, onSubmit, 
 
       <label className="checkbox">
         <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-        Visible to everyone (unticking hides this category and all its subcategories)
+        {t('Visible to everyone (unticking hides this category and all its subcategories)')}
       </label>
 
       <div className="category-form__actions">
-        <Button onClick={onCancel}>Cancel</Button>
+        <Button onClick={onCancel}>{t('Cancel')}</Button>
         <Button variant="primary" isLoading={saving} onClick={() => void submit()}>
-          {category ? 'Save changes' : 'Create category'}
+          {category ? t('Save changes') : t('Create category')}
         </Button>
       </div>
     </div>

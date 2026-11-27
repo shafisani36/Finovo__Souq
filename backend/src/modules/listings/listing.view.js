@@ -11,7 +11,7 @@ export const toListingViews = async (docs) => {
   const sellerIds = [...new Set(docs.map((d) => d.seller.toString()))]
   const [tree, sellers, activeCounts] = await Promise.all([
     getCategoryTree(),
-    User.find({ _id: { $in: sellerIds } }).select('name city phone avatarKey createdAt').lean(),
+    User.find({ _id: { $in: sellerIds } }).select('name city avatarKey createdAt').lean(),
     Listing.aggregate([
       { $match: { ...PUBLIC_FILTER, seller: { $in: docs.map((d) => d.seller) } } },
       { $group: { _id: '$seller', count: { $sum: 1 } } },
@@ -32,7 +32,6 @@ export const toListingViews = async (docs) => {
         city: seller?.city ?? null,
         avatarUrl: publicUrl(seller?.avatarKey),
         memberSince: seller?.createdAt ?? null,
-        phoneVerified: Boolean(seller?.phone),
         activeListings: activeById.get(sellerId) ?? 0,
       },
       categoryId: d.categoryId,

@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from 'react';
-import { CheckCircle2, Eye, Hourglass, MoreHorizontal, Pencil, PlusCircle, RefreshCw, RotateCcw, Send, Undo2 } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { CheckCircle2, Eye, Hourglass, MoreHorizontal, Pencil, PlusCircle, RefreshCw, RotateCcw, Send, Sparkles, Undo2 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getErrorMessage } from '../../api/errors';
 import { PageHeader } from '../../components/dashboard/PageHeader';
 import { ListingImage } from '../../components/listings/ListingImage';
-import { ListingStatusBadge } from '../../components/ui/Badge';
+import { PromoteAdModal } from '../../components/listings/PromoteAdModal';
+import { Badge, ListingStatusBadge } from '../../components/ui/Badge';
 import { Button, ButtonLink } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Pagination } from '../../components/ui/Pagination';
@@ -13,17 +14,20 @@ import { useToast } from '../../components/ui/toast-context';
 import { useAsync } from '../../hooks/useAsync';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { listingsService } from '../../services/listings.service';
+import { paymentsService } from '../../services/payments.service';
+import { settingsService } from '../../services/settings.service';
 import type { Listing, ListingStatus } from '../../types';
 import { formatDate, formatNumber, formatPrice, formatRelative } from '../../utils/format';
+import { t } from '../../i18n';
 
 const TABS: { value: ListingStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'published', label: 'Live' },
-  { value: 'pending_review', label: 'In review' },
-  { value: 'changes_required', label: 'Needs changes' },
-  { value: 'draft', label: 'Drafts' },
-  { value: 'expired', label: 'Expired' },
-  { value: 'withdrawn', label: 'Withdrawn' },
+  { value: 'all', label: t('All') },
+  { value: 'published', label: t('Live') },
+  { value: 'pending_review', label: t('In review') },
+  { value: 'changes_required', label: t('Needs changes') },
+  { value: 'draft', label: t('Drafts') },
+  { value: 'expired', label: t('Expired') },
+  { value: 'withdrawn', label: t('Withdrawn') },
 ];
 
 const RENEW_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
@@ -34,12 +38,12 @@ const canRenew = (l: Listing) => l.status === 'expired' || (l.status === 'publis
 type PendingAction = { type: 'withdraw' | 'sold' | 'rented' | 'available' | 'submit' | 'renew'; listing: Listing };
 
 const CONFIRM_COPY: Record<PendingAction['type'], { title: string; text: string; button: string }> = {
-  withdraw: { title: 'Withdraw this ad?', text: 'It will be removed from search. Buyers who saved it will no longer see it.', button: 'Withdraw ad' },
-  sold: { title: 'Mark as sold?', text: 'The ad leaves search results and is shown as sold to anyone with the link.', button: 'Mark as sold' },
-  rented: { title: 'Mark as rented?', text: 'The ad leaves search results and is shown as rented to anyone with the link.', button: 'Mark as rented' },
-  available: { title: 'Make available again?', text: 'The ad goes back into search results.', button: 'Make available' },
-  submit: { title: 'Submit for review?', text: 'Our team will review the ad. You will get a notification when it is live.', button: 'Submit ad' },
-  renew: { title: 'Renew this ad?', text: 'It goes back online right away for another full period. Nothing in the ad changes, so no new review is needed.', button: 'Renew ad' },
+  withdraw: { title: t('Withdraw this ad?'), text: t('It will be removed from search. Buyers who saved it will no longer see it.'), button: 'Withdraw ad' },
+  sold: { title: t('Mark as sold?'), text: t('The ad leaves search results and is shown as sold to anyone with the link.'), button: 'Mark as sold' },
+  rented: { title: t('Mark as rented?'), text: t('The ad leaves search results and is shown as rented to anyone with the link.'), button: 'Mark as rented' },
+  available: { title: t('Make available again?'), text: t('The ad goes back into search results.'), button: 'Make available' },
+  submit: { title: t('Submit for review?'), text: t('Our team will review the ad. You will get a notification when it is live.'), button: 'Submit ad' },
+  renew: { title: t('Renew this ad?'), text: t('It goes back online right away for another full period. Nothing in the ad changes, so no new review is needed.'), button: 'Renew ad' },
 };
 
 const SUCCESS_TITLE: Record<PendingAction['type'], string> = {
@@ -52,12 +56,53 @@ const SUCCESS_TITLE: Record<PendingAction['type'], string> = {
 };
 
 export function MyListingsPage() {
-  useDocumentTitle('My ads');
+  useDocumentTitle(t('My ads'));
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const status = searchParams.get('status') ?? 'all';
   const page = Number(searchParams.get('page')) || 1;
   const listings = useAsync(() => listingsService.mine({ status, page }), [status, page]);
+  const settings = useAsync(() => settingsService.get(), []);
+  const promotions = settings.data?.promotions;
+  const [promoting, setPromoting] = useState<Listing | null>(null);
+
+  // Back from Stripe: apply the payment straight away (the webhook does the same, whichever comes first)
+  const handledReturn = useRef(false);
+  useEffect(() => {
+    const result = searchParams.get('promotion');
+    if (!result || handledReturn.current) return;
+    handledReturn.current = true;
+    const sessionId = searchParams.get('session_id');
+    const next = new URLSearchParams(searchParams);
+    next.delete('promotion');
+    next.delete('session_id');
+    setSearchParams(next, { replace: true });
+
+    if (result !== 'success' || !sessionId) {
+      toast.show({ title: t('Payment cancelled'), message: t('You were not charged.') });
+      return;
+    }
+    paymentsService
+      .confirmPromotion(sessionId)
+      .then((payment) => {
+        if (payment.status === 'paid') {
+          toast.show({ title: t('Payment received'), message: t('Our team will check your ad and start the promotion soon. Your invoice has been emailed to you.') });
+        } else if (payment.status === 'approved') {
+          toast.show({
+            title: t('Your ad is featured'),
+            message: t('Featured until {featuredUntil}.', {
+              featuredUntil: formatDate(payment.featuredUntil as string),
+            }),
+          });
+        } else if (payment.status === 'refunded') {
+          toast.show({ title: t('Payment refunded'), message: payment.note ?? t('The ad was no longer live, so we refunded you.'), tone: 'error' });
+        } else {
+          toast.show({ title: t('Payment is processing'), message: t('We will notify you as soon as your ad is featured.') });
+        }
+        void listings.reload();
+      })
+      .catch(() => toast.show({ title: t('Payment is processing'), message: t('We will notify you as soon as your ad is featured.') }));
+  }, [searchParams, setSearchParams, toast, listings]);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [working, setWorking] = useState(false);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -75,7 +120,7 @@ export function MyListingsPage() {
       setPending(null);
       void listings.refresh();
     } catch (error) {
-      toast.show({ title: 'Could not update the ad', message: getErrorMessage(error), tone: 'error' });
+      toast.show({ title: t('Could not update the ad'), message: getErrorMessage(error), tone: 'error' });
     } finally {
       setWorking(false);
     }
@@ -84,34 +129,52 @@ export function MyListingsPage() {
   const actionsFor = (l: Listing) => {
     const items: { key: string; label: string; icon: ReactNode; onClick: () => void }[] = [];
     if (['draft', 'changes_required', 'published', 'pending_review'].includes(l.status) && l.availability === 'available') {
-      items.push({ key: 'edit', label: 'Edit', icon: <Pencil size={15} />, onClick: () => undefined });
+      items.push({ key: 'edit', label: t('Edit'), icon: <Pencil size={15} />, onClick: () => undefined });
     }
-    if (l.status === 'published' && canRenew(l)) items.push({ key: 'renew', label: 'Renew now', icon: <RefreshCw size={15} />, onClick: () => setPending({ type: 'renew', listing: l }) });
-    if (l.status === 'draft' || l.status === 'changes_required') items.push({ key: 'submit', label: 'Submit for review', icon: <Send size={15} />, onClick: () => setPending({ type: 'submit', listing: l }) });
+    if (l.status === 'published' && canRenew(l)) items.push({ key: 'renew', label: t('Renew now'), icon: <RefreshCw size={15} />, onClick: () => setPending({ type: 'renew', listing: l }) });
+    if (l.status === 'draft' || l.status === 'changes_required')
+      items.push({ key: 'submit', label: t('Submit for review'), icon: <Send size={15} />, onClick: () => setPending({ type: 'submit', listing: l }) });
     if (l.status === 'published' && l.availability === 'available') {
-      items.push({ key: 'sold', label: l.listingType === 'rent' ? 'Mark as rented' : 'Mark as sold', icon: <CheckCircle2 size={15} />, onClick: () => setPending({ type: l.listingType === 'rent' ? 'rented' : 'sold', listing: l }) });
+      items.push({
+        key: 'sold',
+        label: l.listingType === 'rent' ? t('Mark as rented') : t('Mark as sold'),
+        icon: <CheckCircle2 size={15} />,
+        onClick: () => setPending({ type: l.listingType === 'rent' ? 'rented' : 'sold', listing: l }),
+      });
     }
-    if (l.status === 'published' && l.availability !== 'available') items.push({ key: 'available', label: 'Make available', icon: <RotateCcw size={15} />, onClick: () => setPending({ type: 'available', listing: l }) });
-    if (!['withdrawn', 'hidden', 'rejected'].includes(l.status)) items.push({ key: 'withdraw', label: 'Withdraw', icon: <Undo2 size={15} />, onClick: () => setPending({ type: 'withdraw', listing: l }) });
+    if (l.status === 'published' && l.availability === 'available' && promotions?.enabled) {
+      items.push({ key: 'promote', label: l.featuredUntil ? t('Extend promotion') : t('Promote ad'), icon: <Sparkles size={15} />, onClick: () => setPromoting(l) });
+    }
+    if (l.status === 'published' && l.availability !== 'available')
+      items.push({ key: 'available', label: t('Make available'), icon: <RotateCcw size={15} />, onClick: () => setPending({ type: 'available', listing: l }) });
+    if (!['withdrawn', 'hidden', 'rejected'].includes(l.status))
+      items.push({ key: 'withdraw', label: t('Withdraw'), icon: <Undo2 size={15} />, onClick: () => setPending({ type: 'withdraw', listing: l }) });
     return items;
   };
 
   return (
     <>
       <PageHeader
-        title="My ads"
-        subtitle="Manage, edit and track the review status of your ads."
+        title={t('My ads')}
+        subtitle={t('Manage, edit and track the review status of your ads.')}
         actions={
           <ButtonLink to="/account/listings/new" variant="primary" icon={<PlusCircle size={17} />}>
-            Post an ad
+            {t('Post an ad')}
           </ButtonLink>
         }
       />
       <section className="card">
         <div className="toolbar">
-          <div className="segmented segmented--scroll" role="tablist" aria-label="Status">
+          <div className="segmented segmented--scroll" role="tablist" aria-label={t('Status')}>
             {TABS.map((tab) => (
-              <button key={tab.value} type="button" role="tab" aria-selected={status === tab.value} className="segmented__item" onClick={() => setSearchParams(tab.value === 'all' ? {} : { status: tab.value })}>
+              <button
+                key={tab.value}
+                type="button"
+                role="tab"
+                aria-selected={status === tab.value}
+                className="segmented__item"
+                onClick={() => setSearchParams(tab.value === 'all' ? {} : { status: tab.value })}
+              >
                 {tab.label}
               </button>
             ))}
@@ -124,11 +187,11 @@ export function MyListingsPage() {
           <SkeletonBlock height={320} />
         ) : listings.data.items.length === 0 ? (
           <EmptyState
-            title={status === 'all' ? 'You have no ads yet' : 'No ads with this status'}
-            text="Ads you post appear here with their review status."
+            title={status === 'all' ? t('You have no ads yet') : t('No ads with this status')}
+            text={t('Ads you post appear here with their review status.')}
             action={
               <ButtonLink to="/account/listings/new" variant="primary" icon={<PlusCircle size={16} />}>
-                Post an ad
+                {t('Post an ad')}
               </ButtonLink>
             }
           />
@@ -145,46 +208,61 @@ export function MyListingsPage() {
                     <div className="my-listing__body">
                       <div className="my-listing__top">
                         <ListingStatusBadge status={l.status} availability={l.availability} />
+                        {l.status === 'published' && l.featuredUntil && (
+                          <Badge tone="primary" icon={<Sparkles size={12} />}>
+                            {t('Featured until')} {formatDate(l.featuredUntil)}
+                          </Badge>
+                        )}
                         {l.status === 'published' && l.expiresAt ? (
                           <span className={canRenew(l) ? 'my-listing__expiry is-soon' : 'text-muted'}>
-                            {canRenew(l) && <Hourglass size={13} />} Live until {formatDate(l.expiresAt)}
+                            {canRenew(l) && <Hourglass size={13} />} {t('Live until')} {formatDate(l.expiresAt)}
                           </span>
                         ) : (
-                          <span className="text-muted">Updated {formatRelative(l.updatedAt)}</span>
+                          <span className="text-muted">
+                            {t('Updated')} {formatRelative(l.updatedAt)}
+                          </span>
                         )}
                       </div>
                       <h3 className="my-listing__title">{l.title}</h3>
                       <p className="my-listing__meta">
                         <strong className="tabular">{formatPrice(l.price, l.listingType)}</strong>
                         <span>{l.categoryName}</span>
-                        <span>{l.city}</span>
+                        <span>{t(l.city)}</span>
                         <span className="tabular">
                           <Eye size={13} /> {formatNumber(l.views)}
                         </span>
                       </p>
                       {l.moderationNote && (l.status === 'changes_required' || l.status === 'rejected' || l.status === 'hidden') && (
                         <p className={`my-listing__note${l.status === 'changes_required' ? '' : ' my-listing__note--danger'}`}>
-                          <strong>Moderator:</strong> {l.moderationNote}
+                          <strong>{t('Moderator:')}</strong> {l.moderationNote}
                         </p>
                       )}
                     </div>
                     <div className="my-listing__actions">
                       {l.status === 'changes_required' ? (
                         <ButtonLink to={`/account/listings/${l.id}/edit`} size="sm" variant="primary" icon={<Pencil size={14} />}>
-                          Fix and resubmit
+                          {t('Fix and resubmit')}
                         </ButtonLink>
                       ) : l.status === 'expired' ? (
                         <Button size="sm" variant="primary" icon={<RefreshCw size={14} />} onClick={() => setPending({ type: 'renew', listing: l })}>
-                          Renew
+                          {t('Renew')}
                         </Button>
                       ) : (
                         <ButtonLink to={`/listings/${l.id}`} size="sm" icon={<Eye size={14} />}>
-                          View
+                          {t('View')}
                         </ButtonLink>
                       )}
                       {actions.length > 0 && (
                         <div className="dropdown">
-                          <button type="button" className="icon-btn icon-btn--sm" aria-label={`More actions for ${l.title}`} aria-expanded={menuFor === l.id} onClick={() => setMenuFor(menuFor === l.id ? null : l.id)}>
+                          <button
+                            type="button"
+                            className="icon-btn icon-btn--sm"
+                            aria-label={t('More actions for {title}', {
+                              title: l.title,
+                            })}
+                            aria-expanded={menuFor === l.id}
+                            onClick={() => setMenuFor(menuFor === l.id ? null : l.id)}
+                          >
                             <MoreHorizontal size={16} />
                           </button>
                           {menuFor === l.id && (
@@ -218,10 +296,16 @@ export function MyListingsPage() {
                 );
               })}
             </ul>
-            <Pagination page={listings.data.page} totalPages={listings.data.totalPages} onChange={(p) => setSearchParams({ ...(status !== 'all' ? { status } : {}), ...(p > 1 ? { page: String(p) } : {}) })} />
+            <Pagination
+              page={listings.data.page}
+              totalPages={listings.data.totalPages}
+              onChange={(p) => setSearchParams({ ...(status !== 'all' ? { status } : {}), ...(p > 1 ? { page: String(p) } : {}) })}
+            />
           </>
         )}
       </section>
+
+      {promotions?.enabled && <PromoteAdModal key={promoting?.id ?? 'none'} listing={promoting} packages={promotions.packages} onClose={() => setPromoting(null)} />}
 
       <Modal
         open={Boolean(pending)}
@@ -230,7 +314,7 @@ export function MyListingsPage() {
         onClose={() => setPending(null)}
         footer={
           <>
-            <Button onClick={() => setPending(null)}>Cancel</Button>
+            <Button onClick={() => setPending(null)}>{t('Cancel')}</Button>
             <Button variant={pending?.type === 'withdraw' ? 'danger' : 'primary'} isLoading={working} onClick={runAction}>
               {pending ? CONFIRM_COPY[pending.type].button : ''}
             </Button>

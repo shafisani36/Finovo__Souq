@@ -21,6 +21,7 @@ import { listingsService } from '../../services/listings.service';
 import type { Category, Listing, ListingDraftPayload, ListingPhoto, ListingType } from '../../types';
 import { trailOf } from '../../utils/categories';
 import { formatNumber, formatPrice, LISTING_TYPE_LABELS } from '../../utils/format';
+import { t } from '../../i18n';
 
 type Step = 0 | 1 | 2 | 3;
 const STEPS = ['Category', 'Details', 'Photos', 'Preview'];
@@ -64,24 +65,38 @@ function formFromListing(l: Listing): FormState {
 function validateDetails(form: FormState, category: Category | undefined): Record<string, string> {
   const errors: Record<string, string> = {};
   const title = form.title.trim();
-  if (title.length < 10) errors.title = 'Use at least 10 characters so buyers know what it is.';
-  if (title.length > 90) errors.title = 'Keep the title under 90 characters.';
+  if (title.length < 10) errors.title = t('Use at least 10 characters so buyers know what it is.');
+  if (title.length > 90) errors.title = t('Keep the title under 90 characters.');
   const price = Number(form.price);
-  if (!form.price || !Number.isFinite(price) || price <= 0) errors.price = 'Enter a price greater than 0.';
-  else if (price > 100_000_000) errors.price = 'Check the price; it looks too high.';
-  if (!form.city) errors.city = 'Choose a city.';
-  if (!form.district.trim()) errors.district = 'Enter the district or area.';
-  if (form.description.trim().length < 30) errors.description = 'Describe the item in at least 30 characters.';
+  if (!form.price || !Number.isFinite(price) || price <= 0) errors.price = t('Enter a price greater than 0.');
+  else if (price > 100_000_000) errors.price = t('Check the price; it looks too high.');
+  if (!form.city) errors.city = t('Choose a city.');
+  if (!form.district.trim()) errors.district = t('Enter the district or area.');
+  if (form.description.trim().length < 30) errors.description = t('Describe the item in at least 30 characters.');
   category?.fields.forEach((field) => {
     const value = form.attributes[field.fieldKey]?.trim() ?? '';
-    if (field.required && !value) errors[`attributes.${field.fieldKey}`] = `${field.label} is required.`;
+    if (field.required && !value)
+      errors[`attributes.${field.fieldKey}`] = t('{label} is required.', {
+        label: field.label,
+      });
     if (value && field.inputType === 'number') {
       const n = Number(value);
       const max = field.fieldKey === 'year' ? Math.min(field.max ?? Infinity, new Date().getFullYear() + 1) : field.max;
       const key = `attributes.${field.fieldKey}`;
-      if (!Number.isFinite(n) || n < 0) errors[key] = `${field.label} must be a positive number.`;
-      else if (field.min !== undefined && n < field.min) errors[key] = `${field.label} must be at least ${field.min}.`;
-      else if (max !== undefined && n > max) errors[key] = `${field.label} must be at most ${max}.`;
+      if (!Number.isFinite(n) || n < 0)
+        errors[key] = t('{label} must be a positive number.', {
+          label: field.label,
+        });
+      else if (field.min !== undefined && n < field.min)
+        errors[key] = t('{label} must be at least {min}.', {
+          label: field.label,
+          min: field.min,
+        });
+      else if (max !== undefined && n > max)
+        errors[key] = t('{label} must be at most {max}.', {
+          label: field.label,
+          max,
+        });
     }
   });
   return errors;
@@ -117,18 +132,34 @@ export function PostAdPage() {
   if (!canSell(user)) {
     return (
       <div className="card">
-        <EmptyState title="Only seller accounts can post ads" text="Your account is set up for buying. To sell, create a seller account; our team approves it before you can post." action={<ButtonLink to="/search" variant="primary">Browse ads</ButtonLink>} />
+        <EmptyState
+          title={t('Only seller accounts can post ads')}
+          text={t('Your account is set up for buying. To sell, create a seller account; our team approves it before you can post.')}
+          action={
+            <ButtonLink to="/search" variant="primary">
+              {t('Browse ads')}
+            </ButtonLink>
+          }
+        />
       </div>
     );
   }
-  if (categories.isLoading || settings.isLoading || (isEdit && existing.isLoading)) return <LoadingState label="Loading..." />;
+  if (categories.isLoading || settings.isLoading || (isEdit && existing.isLoading)) return <LoadingState label={t('Loading...')} />;
   if (categories.error || !categories.data) return <ErrorState error={categories.error} onRetry={categories.reload} />;
   if (settings.error || !settings.data) return <ErrorState error={settings.error} onRetry={settings.reload} />;
-  if (isEdit && (existing.error || !existing.data)) return <ErrorState error={existing.error} onRetry={existing.reload} title="We could not load this ad" />;
+  if (isEdit && (existing.error || !existing.data)) return <ErrorState error={existing.error} onRetry={existing.reload} title={t('We could not load this ad')} />;
   if (existing.data && !['draft', 'changes_required', 'published', 'pending_review'].includes(existing.data.status)) {
     return (
       <div className="card">
-        <EmptyState title="This ad cannot be edited" text="Withdrawn, hidden or rejected ads cannot be changed. You can post a new ad instead." action={<ButtonLink to="/account/listings/new" variant="primary">Post a new ad</ButtonLink>} />
+        <EmptyState
+          title={t('This ad cannot be edited')}
+          text={t('Withdrawn, hidden or rejected ads cannot be changed. You can post a new ad instead.')}
+          action={
+            <ButtonLink to="/account/listings/new" variant="primary">
+              {t('Post a new ad')}
+            </ButtonLink>
+          }
+        />
       </div>
     );
   }
@@ -136,7 +167,15 @@ export function PostAdPage() {
   if (existing.data && !categories.data.some((c) => c.id === existing.data?.categoryId)) {
     return (
       <div className="card">
-        <EmptyState title="This category is no longer available" text="Our team has closed the category this ad was in, so it cannot be edited right now. You can post a new ad in another category." action={<ButtonLink to="/account/listings/new" variant="primary">Post a new ad</ButtonLink>} />
+        <EmptyState
+          title={t('This category is no longer available')}
+          text={t('Our team has closed the category this ad was in, so it cannot be edited right now. You can post a new ad in another category.')}
+          action={
+            <ButtonLink to="/account/listings/new" variant="primary">
+              {t('Post a new ad')}
+            </ButtonLink>
+          }
+        />
       </div>
     );
   }
@@ -171,7 +210,9 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
   const existingPhotoCount = savedPhotos.length;
   const totalPhotos = existingPhotoCount + photos.length;
   const photosRequired = !category || allowedTypes(category).some((type) => type !== 'service');
-  const categoryTrail = trailOf(categories, category).map((c) => c.name).join(' › ');
+  const categoryTrail = trailOf(categories, category)
+    .map((c) => c.name)
+    .join(' › ');
 
   const previewListing = useMemo(
     () => ({ photos: photos.map((p, i) => ({ id: p.id, url: p.previewUrl, position: i })), categoryIcon: category?.icon ?? 'tag', title: form.title }),
@@ -185,7 +226,10 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
 
   const setAttribute = (key: string, value: string) => {
     setForm((f) => ({ ...f, attributes: { ...f.attributes, [key]: value } }));
-    setErrors((e) => ({ ...e, [`attributes.${key}`]: '' }));
+    setErrors((e) => ({
+      ...e,
+      [`attributes.${key}`]: '',
+    }));
   };
 
   const chooseCategory = (c: Category) => {
@@ -205,7 +249,7 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
 
   const goToPreview = () => {
     if (photosRequired && totalPhotos === 0) {
-      setPhotoError('Add at least one photo. Ads with photos get far more replies.');
+      setPhotoError(t('Add at least one photo. Ads with photos get far more replies.'));
       return;
     }
     setStep(3);
@@ -218,9 +262,25 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
     const accepted: NewPhoto[] = [];
     let slots = maxPhotos - totalPhotos;
     files.forEach((file) => {
-      if (!(LISTING_PHOTO_LIMITS.acceptedTypes as readonly string[]).includes(file.type)) problems.push(`${file.name}: use JPG, PNG or WebP.`);
-      else if (file.size > LISTING_PHOTO_LIMITS.maxSizeBytes) problems.push(`${file.name}: larger than ${LISTING_PHOTO_LIMITS.maxSizeBytes / 1024 / 1024} MB.`);
-      else if (slots <= 0) problems.push(`Only ${maxPhotos} photos are allowed.`);
+      if (!(LISTING_PHOTO_LIMITS.acceptedTypes as readonly string[]).includes(file.type))
+        problems.push(
+          t('{name}: use JPG, PNG or WebP.', {
+            name: file.name,
+          }),
+        );
+      else if (file.size > LISTING_PHOTO_LIMITS.maxSizeBytes)
+        problems.push(
+          t('{name}: larger than {maxSizeBytes} MB.', {
+            name: file.name,
+            maxSizeBytes: LISTING_PHOTO_LIMITS.maxSizeBytes / 1024 / 1024,
+          }),
+        );
+      else if (slots <= 0)
+        problems.push(
+          t('Only {maxPhotos} photos are allowed.', {
+            maxPhotos,
+          }),
+        );
       else {
         accepted.push({ id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`, file, previewUrl: URL.createObjectURL(file) });
         slots -= 1;
@@ -244,8 +304,7 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
 
   const deleteSavedPhoto = (photoId: string) => existing && changeSavedPhotos(() => listingsService.deletePhoto(existing.id, photoId));
 
-  const makeCover = (photoId: string) =>
-    existing && changeSavedPhotos(() => listingsService.reorderPhotos(existing.id, [photoId, ...savedPhotos.map((p) => p.id).filter((id) => id !== photoId)]));
+  const makeCover = (photoId: string) => existing && changeSavedPhotos(() => listingsService.reorderPhotos(existing.id, [photoId, ...savedPhotos.map((p) => p.id).filter((id) => id !== photoId)]));
 
   const removePhoto = (photoId: string) => {
     setPhotos((list) => {
@@ -262,12 +321,16 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
     try {
       const payload = toPayload(form, category);
       let listing = existing ? await listingsService.update(existing.id, payload) : await listingsService.createDraft(payload);
-      if (photos.length) await listingsService.uploadPhotos(listing.id, photos.map((p) => p.file));
+      if (photos.length)
+        await listingsService.uploadPhotos(
+          listing.id,
+          photos.map((p) => p.file),
+        );
       if (mode === 'submit' && (listing.status === 'draft' || listing.status === 'changes_required')) {
         listing = await listingsService.submit(listing.id);
       }
       setResult(listing);
-      toast.show({ title: mode === 'draft' ? 'Draft saved' : 'Ad sent for review' });
+      toast.show({ title: mode === 'draft' ? t('Draft saved') : t('Ad sent for review') });
     } catch (error) {
       if (error instanceof ApiError && Object.keys(error.fieldErrors).length) {
         setErrors(error.fieldErrors);
@@ -285,16 +348,16 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
       <div className="card post-result">
         <EmptyState
           icon={inReview ? <Clock size={26} /> : <CheckCircle2 size={26} />}
-          title={inReview ? 'Your ad is in review' : 'Draft saved'}
+          title={inReview ? t('Your ad is in review') : t('Draft saved')}
           text={
             inReview
-              ? 'Our team checks every ad before it goes live. You will get a notification as soon as it is approved or if anything needs changing.'
-              : 'You can finish and submit it any time from My ads.'
+              ? t('Our team checks every ad before it goes live. You will get a notification as soon as it is approved or if anything needs changing.')
+              : t('You can finish and submit it any time from My ads.')
           }
           action={
             <div className="post-result__actions">
               <ButtonLink to="/account/listings" variant="primary">
-                Go to my ads
+                {t('Go to my ads')}
               </ButtonLink>
               {!isEdit && (
                 <Button
@@ -305,7 +368,7 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
                     setStep(0);
                   }}
                 >
-                  Post another ad
+                  {t('Post another ad')}
                 </Button>
               )}
             </div>
@@ -320,31 +383,31 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
   return (
     <>
       <PageHeader
-        title={isEdit ? 'Edit ad' : 'Post an ad'}
+        title={isEdit ? t('Edit ad') : t('Post an ad')}
         subtitle={
           isEdit && existing ? (
             <>
-              Current status: <ListingStatusBadge status={existing.status} />
-              {existing.status === 'published' && ' Changing a live ad sends it back for review.'}
+              {t('Current status:')} <ListingStatusBadge status={existing.status} />
+              {existing.status === 'published' && t(' Changing a live ad sends it back for review.')}
             </>
           ) : (
-            'Free to post. Every ad is reviewed before it goes live.'
+            t('Always free to post, with no commission when it sells. Every ad is reviewed before it goes live.')
           )
         }
       />
 
-      <ol className="stepper" aria-label="Progress">
+      <ol className="stepper" aria-label={t('Progress')}>
         {STEPS.map((label, index) => (
           <li key={label} className={`stepper__item${index === step ? ' is-current' : ''}${index < step ? ' is-done' : ''}`} aria-current={index === step ? 'step' : undefined}>
             <span className="stepper__dot">{index < step ? <CheckCircle2 size={16} /> : index + 1}</span>
-            <span className="stepper__label">{label}</span>
+            <span className="stepper__label">{t(label)}</span>
           </li>
         ))}
       </ol>
 
       {existing?.moderationNote && existing.status === 'changes_required' && (
         <div className="alert alert--warning" style={{ marginBottom: 'var(--space-5)' }}>
-          <strong>Moderator note:</strong>&nbsp;{existing.moderationNote}
+          <strong>{t('Moderator note:')}</strong>&nbsp;{existing.moderationNote}
         </div>
       )}
       {formError && (
@@ -355,8 +418,8 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
 
       {step === 0 && (
         <section className="card">
-          <h2 className="card-title">What are you posting?</h2>
-          <p className="card-subtitle">Choose the category, then the most specific subcategory. It decides which details buyers can filter by.</p>
+          <h2 className="card-title">{t('What are you posting?')}</h2>
+          <p className="card-subtitle">{t('Choose the category, then the most specific subcategory. It decides which details buyers can filter by.')}</p>
           <CategoryPicker categories={categories} value={form.categoryId} onSelect={chooseCategory} />
         </section>
       )}
@@ -365,12 +428,12 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
         <section className="card">
           <div className="card-header">
             <div>
-              <h2 className="card-title">Ad details</h2>
+              <h2 className="card-title">{t('Ad details')}</h2>
               <p className="card-subtitle">
-                Category: <strong>{categoryTrail}</strong>
+                {t('Category:')} <strong>{categoryTrail}</strong>
                 {!isEdit && (
                   <button type="button" className="link link--button" onClick={() => setStep(0)} style={{ marginInlineStart: 8 }}>
-                    Change
+                    {t('Change')}
                   </button>
                 )}
               </p>
@@ -379,10 +442,18 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
           <div className="form-grid">
             {typeOptions.length > 1 && (
               <div className="field form-grid__full">
-                <span className="field__label">Ad type</span>
-                <div className="segmented" role="radiogroup" aria-label="Ad type">
+                <span className="field__label">{t('Ad type')}</span>
+                <div className="segmented" role="radiogroup" aria-label={t('Ad type')}>
                   {typeOptions.map((t) => (
-                    <button key={t} type="button" role="radio" aria-checked={form.listingType === t} aria-pressed={form.listingType === t} className="segmented__item" onClick={() => setField('listingType', t)}>
+                    <button
+                      key={t}
+                      type="button"
+                      role="radio"
+                      aria-checked={form.listingType === t}
+                      aria-pressed={form.listingType === t}
+                      className="segmented__item"
+                      onClick={() => setField('listingType', t)}
+                    >
                       {LISTING_TYPE_LABELS[t]}
                     </button>
                   ))}
@@ -391,17 +462,19 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
             )}
             <InputField
               wrapperClassName="form-grid__full"
-              label="Title"
+              label={t('Title')}
               required
               value={form.title}
               onChange={(e) => setField('title', e.target.value)}
               error={errors.title}
               maxLength={90}
-              hint={`${form.title.trim().length}/90 - include brand, model and key detail`}
-              placeholder={category.slug === 'cars' ? 'e.g. Toyota Camry GLE 2022, single owner' : 'A short, clear title'}
+              hint={t('{count}/90 - include brand, model and key detail', {
+                count: form.title.trim().length,
+              })}
+              placeholder={category.slug === 'cars' ? t('e.g. Toyota Camry GLE 2022, single owner') : t('A short, clear title')}
             />
             <InputField
-              label={form.listingType === 'rent' ? 'Rent per year (SAR)' : form.listingType === 'service' ? 'Price or starting price (SAR)' : 'Price (SAR)'}
+              label={form.listingType === 'rent' ? t('Rent per year (SAR)') : form.listingType === 'service' ? t('Price or starting price (SAR)') : t('Price (SAR)')}
               required
               type="number"
               inputMode="numeric"
@@ -410,8 +483,24 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
               onChange={(e) => setField('price', e.target.value)}
               error={errors.price}
             />
-            <SelectField label="City" required value={form.city} onChange={(city) => setField('city', city)} placeholder="Choose city" options={SAUDI_CITIES.map((c) => ({ value: c, label: c }))} error={errors.city} />
-            <InputField label="District / area" required value={form.district} onChange={(e) => setField('district', e.target.value)} error={errors.district} maxLength={60} icon={<MapPin size={16} />} />
+            <SelectField
+              label={t('City')}
+              required
+              value={form.city}
+              onChange={(city) => setField('city', city)}
+              placeholder={t('Choose city')}
+              options={SAUDI_CITIES.map((c) => ({ value: c, label: t(c) }))}
+              error={errors.city}
+            />
+            <InputField
+              label={t('District / area')}
+              required
+              value={form.district}
+              onChange={(e) => setField('district', e.target.value)}
+              error={errors.district}
+              maxLength={60}
+              icon={<MapPin size={16} />}
+            />
             {category.fields.map((field) =>
               field.inputType === 'select' ? (
                 <SelectField
@@ -420,8 +509,10 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
                   required={field.required}
                   value={form.attributes[field.fieldKey] ?? ''}
                   onChange={(next) => setAttribute(field.fieldKey, next)}
-                  placeholder={`Choose ${field.label.toLowerCase()}`}
-                  options={(field.options ?? []).map((o) => ({ value: o, label: o }))}
+                  placeholder={t('Choose {value}', {
+                    value: field.label.toLowerCase(),
+                  })}
+                  options={(field.options ?? []).map((o) => ({ value: o, label: t(o) }))}
                   error={errors[`attributes.${field.fieldKey}`]}
                 />
               ) : (
@@ -442,26 +533,26 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
             )}
             <TextareaField
               wrapperClassName="form-grid__full"
-              label="Description"
+              label={t('Description')}
               required
               rows={6}
               value={form.description}
               onChange={(e) => setField('description', e.target.value)}
               error={errors.description}
               maxLength={4000}
-              hint="Condition, history, what is included and how to view it. Do not add phone numbers; buyers message you here."
+              hint={t('Condition, history, what is included and how to view it. Do not add phone numbers; buyers message you here.')}
             />
           </div>
           <div className="wizard-actions">
             {!isEdit ? (
               <Button icon={<ArrowLeft size={16} />} onClick={() => setStep(0)}>
-                Back
+                {t('Back')}
               </Button>
             ) : (
               <span />
             )}
             <Button variant="primary" onClick={goToPhotos}>
-              Continue <ArrowRight size={16} />
+              {t('Continue')} <ArrowRight size={16} />
             </Button>
           </div>
         </section>
@@ -469,31 +560,56 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
 
       {step === 2 && (
         <section className="card">
-          <h2 className="card-title">Photos</h2>
+          <h2 className="card-title">{t('Photos')}</h2>
           <p className="card-subtitle">
-            Up to {maxPhotos} photos, JPG, PNG or WebP, max {LISTING_PHOTO_LIMITS.maxSizeBytes / 1024 / 1024} MB each. The first photo is the cover.
+            {t('Up to')} {maxPhotos} {t('photos, JPG, PNG or WebP, max')} {LISTING_PHOTO_LIMITS.maxSizeBytes / 1024 / 1024} {t('MB each. The first photo is the cover.')}
           </p>
           <div className="photo-grid">
             {savedPhotos.map((p, index) => (
               <div key={p.id} className="photo-grid__item">
-                <img src={p.url} alt={`Photo ${index + 1}`} />
+                <img
+                  src={p.url}
+                  alt={t('Photo {index}', {
+                    index: index + 1,
+                  })}
+                />
                 {index === 0 ? (
-                  <span className="photo-grid__tag">Cover</span>
+                  <span className="photo-grid__tag">{t('Cover')}</span>
                 ) : (
                   <button type="button" className="photo-grid__cover" onClick={() => void makeCover(p.id)} disabled={photoBusy}>
-                    <Star size={13} /> Make cover
+                    <Star size={13} /> {t('Make cover')}
                   </button>
                 )}
-                <button type="button" className="icon-btn icon-btn--sm photo-grid__remove" onClick={() => void deleteSavedPhoto(p.id)} disabled={photoBusy} aria-label={`Delete photo ${index + 1}`}>
+                <button
+                  type="button"
+                  className="icon-btn icon-btn--sm photo-grid__remove"
+                  onClick={() => void deleteSavedPhoto(p.id)}
+                  disabled={photoBusy}
+                  aria-label={t('Delete photo {index}', {
+                    index: index + 1,
+                  })}
+                >
                   <Trash2 size={14} />
                 </button>
               </div>
             ))}
             {photos.map((p, index) => (
               <div key={p.id} className="photo-grid__item">
-                <img src={p.previewUrl} alt={`New photo ${index + 1}`} />
-                {existingPhotoCount === 0 && index === 0 && <span className="photo-grid__tag">Cover</span>}
-                <button type="button" className="icon-btn icon-btn--sm photo-grid__remove" onClick={() => removePhoto(p.id)} aria-label={`Remove photo ${index + 1}`}>
+                <img
+                  src={p.previewUrl}
+                  alt={t('New photo {index}', {
+                    index: index + 1,
+                  })}
+                />
+                {existingPhotoCount === 0 && index === 0 && <span className="photo-grid__tag">{t('Cover')}</span>}
+                <button
+                  type="button"
+                  className="icon-btn icon-btn--sm photo-grid__remove"
+                  onClick={() => removePhoto(p.id)}
+                  aria-label={t('Remove photo {index}', {
+                    index: index + 1,
+                  })}
+                >
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -501,7 +617,7 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
             {totalPhotos < maxPhotos && (
               <button type="button" className="photo-grid__add" onClick={() => fileInput.current?.click()}>
                 <ImagePlus size={26} />
-                <span>Add photos</span>
+                <span>{t('Add photos')}</span>
                 <span className="text-muted tabular">
                   {totalPhotos}/{maxPhotos}
                 </span>
@@ -516,10 +632,10 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
           )}
           <div className="wizard-actions">
             <Button icon={<ArrowLeft size={16} />} onClick={() => setStep(1)}>
-              Back
+              {t('Back')}
             </Button>
             <Button variant="primary" onClick={goToPreview}>
-              Preview <ArrowRight size={16} />
+              {t('Preview')} <ArrowRight size={16} />
             </Button>
           </div>
         </section>
@@ -527,8 +643,8 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
 
       {step === 3 && category && (
         <section className="card">
-          <h2 className="card-title">Preview</h2>
-          <p className="card-subtitle">This is how buyers will see your ad once it is approved.</p>
+          <h2 className="card-title">{t('Preview')}</h2>
+          <p className="card-subtitle">{t('This is how buyers will see your ad once it is approved.')}</p>
           <div className="ad-preview">
             <div className="ad-preview__media">
               <ListingImage listing={savedPhotos.length ? { ...previewListing, photos: savedPhotos } : previewListing} iconSize={72} />
@@ -548,7 +664,7 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
                     <div key={f.fieldKey}>
                       <dt>{f.label}</dt>
                       <dd>
-                        {f.inputType === 'number' && f.fieldKey !== 'year' ? formatNumber(Number(form.attributes[f.fieldKey])) : form.attributes[f.fieldKey]}
+                        {f.inputType === 'number' && f.fieldKey !== 'year' ? formatNumber(Number(form.attributes[f.fieldKey])) : t(form.attributes[f.fieldKey])}
                         {f.unit ? ` ${f.unit}` : ''}
                       </dd>
                     </div>
@@ -560,16 +676,16 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
           </div>
           <div className="wizard-actions">
             <Button icon={<ArrowLeft size={16} />} onClick={() => setStep(2)} disabled={Boolean(submitting)}>
-              Back
+              {t('Back')}
             </Button>
             <div className="wizard-actions__group">
               {(!existing || existing.status === 'draft') && (
                 <Button onClick={() => save('draft')} isLoading={submitting === 'draft'} disabled={Boolean(submitting)}>
-                  Save as draft
+                  {t('Save as draft')}
                 </Button>
               )}
               <Button variant="primary" icon={<Send size={16} />} onClick={() => save('submit')} isLoading={submitting === 'submit'} disabled={Boolean(submitting)}>
-                {existing?.status === 'pending_review' ? 'Save changes' : 'Submit for review'}
+                {existing?.status === 'pending_review' ? t('Save changes') : t('Submit for review')}
               </Button>
             </div>
           </div>
@@ -578,9 +694,9 @@ function PostAdForm({ categories, maxPhotos, existing }: { categories: Category[
 
       {step > 0 && !isEdit && (
         <p className="text-muted" style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)' }}>
-          Leaving this page discards unsaved changes.
+          {t('Leaving this page discards unsaved changes.')}
           <button type="button" className="link link--button" style={{ marginInlineStart: 6 }} onClick={() => navigate('/account/listings')}>
-            Cancel
+            {t('Cancel')}
           </button>
         </p>
       )}

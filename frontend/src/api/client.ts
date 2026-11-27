@@ -1,5 +1,7 @@
 import { env } from '../config/env';
 import { endpoints } from './endpoints';
+import { t } from '../i18n';
+import { localizeResponse } from '../i18n/localize';
 import { ApiError, NETWORK_ERROR_MESSAGE, type FieldErrors } from './errors';
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -75,7 +77,9 @@ const FIELD_KEYWORDS: [RegExp, string][] = [
 function toFieldErrors(errors: unknown): { fields: FieldErrors; details: string[] } {
   const fields: FieldErrors = {};
   const details: string[] = [];
-  const add = (field: string | undefined, message: string) => {
+  const add = (field: string | undefined, original: string) => {
+    // Server messages are English; known ones are shown in the reader's language
+    const message = t(original);
     details.push(message);
     if (!field) return;
     const text = message.endsWith('.') ? message : `${message}.`;
@@ -171,7 +175,7 @@ class ApiClient {
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     }
 
-    return this.parseResponse<T>(response);
+    return this.parseResponse<T>(response, path);
   }
 
   private buildUrl(path: string, params?: Record<string, QueryValue>): string {
@@ -184,7 +188,7 @@ class ApiClient {
     return url.toString();
   }
 
-  private async parseResponse<T>(response: Response): Promise<T> {
+  private async parseResponse<T>(response: Response, path: string): Promise<T> {
     if (response.status === 204) return undefined as T;
 
     let payload: ApiEnvelope<T> | null = null;
@@ -198,13 +202,13 @@ class ApiClient {
       const hasFieldErrors = Object.keys(fields).length > 0;
       const message =
         response.status === 400 && hasFieldErrors
-          ? 'Please check the highlighted fields.'
-          : details[0] ?? payload?.message ?? defaultMessageForStatus(response.status);
+          ? t('Please check the highlighted fields.')
+          : (details[0] ?? (payload?.message ? t(payload.message) : defaultMessageForStatus(response.status)));
       throw new ApiError(message, response.status, codeForStatus(response.status), fields, { details });
     }
 
-    if (payload && typeof payload === 'object' && 'data' in payload) return payload.data as T;
-    return payload as T;
+    if (payload && typeof payload === 'object' && 'data' in payload) return localizeResponse(path, payload.data as T);
+    return localizeResponse(path, payload as T);
   }
 
   /** One refresh at a time; parallel 401s wait for the same attempt */
@@ -242,13 +246,13 @@ function codeForStatus(status: number): string {
 }
 
 function defaultMessageForStatus(status: number): string {
-  if (status === 400 || status === 422) return 'Please check the highlighted fields.';
-  if (status === 401) return 'Your session has ended. Please sign in again.';
-  if (status === 403) return 'You do not have permission to do this.';
-  if (status === 404) return 'We could not find what you were looking for.';
-  if (status === 429) return 'Too many attempts. Please wait a moment and try again.';
-  if (status >= 500) return 'The server had a problem. Please try again shortly.';
-  return 'Something went wrong. Please try again.';
+  if (status === 400 || status === 422) return t('Please check the highlighted fields.');
+  if (status === 401) return t('Your session has ended. Please sign in again.');
+  if (status === 403) return t('You do not have permission to do this.');
+  if (status === 404) return t('We could not find what you were looking for.');
+  if (status === 429) return t('Too many attempts. Please wait a moment and try again.');
+  if (status >= 500) return t('The server had a problem. Please try again shortly.');
+  return t('Something went wrong. Please try again.');
 }
 
 export const apiClient = new ApiClient();

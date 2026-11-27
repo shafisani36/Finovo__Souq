@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { t } from '../../i18n';
 
 export const MAX_VOICE_SECONDS = 120;
 
@@ -44,14 +45,14 @@ export function useVoiceRecorder(onRecorded: (recording: VoiceRecording) => void
   const start = async () => {
     setError('');
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      setError('Voice messages are not supported in this browser.');
+      setError(t('Voice messages are not supported in this browser.'));
       return;
     }
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      setError('Allow microphone access in your browser to record a voice message.');
+      setError(t('Allow microphone access in your browser to record a voice message.'));
       return;
     }
     const mimeType = MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type));

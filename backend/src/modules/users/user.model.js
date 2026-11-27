@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Saudi mobile in +9665XXXXXXXX form
     phone: {
       type: String,
       trim: true,
@@ -54,7 +55,7 @@ const userSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['pending', 'active', 'suspended'],
+      enum: ['pending', 'active', 'suspended', 'deleted'],
       default: 'active',
     },
 
@@ -74,11 +75,24 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    deletionReason: {
+      type: String,
+      default: null,
+      maxlength: 500,
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
   }
 )
+
+userSchema.index({ deletionRequestedAt: 1 }, { partialFilterExpression: { deletionRequestedAt: { $type: 'date' } } })
 
 // Hash password before saving
 userSchema.pre('save', async function () {

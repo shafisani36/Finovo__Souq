@@ -4,7 +4,6 @@
  */
 export const APP_NAME = 'Finovo Souq';
 export const CURRENCY = 'SAR';
-export const DEFAULT_LOCALE = 'en-SA';
 
 export const SAUDI_CITIES = [
   'Riyadh',

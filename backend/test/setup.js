@@ -6,3 +6,6 @@ process.env.JWT_REFRESH_SECRET ??= 'test-refresh-secret-that-is-long-enough-0987
 // A separate Redis database, so tests never touch development sessions
 process.env.REDIS_DB ??= '15'
 process.env.UPLOAD_DIR ??= 'uploads-test'
+// Stripe is never called in tests; webhook events are signed locally with this secret
+process.env.STRIPE_SECRET_KEY ??= 'sk_test_dummy'
+process.env.STRIPE_WEBHOOK_SECRET ??= 'whsec_test_secret'

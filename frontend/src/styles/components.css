@@ -915,6 +915,10 @@ td.table__actions > * + * {
   color: var(--color-text-muted);
 }
 
+.table-item__meta + .table-item__meta {
+  display: block;
+}
+
 /* Cards that hold a table keep the table edge to edge */
 .card > .table-wrap {
   margin-inline: calc(var(--space-5) * -1);
@@ -1238,4 +1242,99 @@ td.table__actions > * + * {
 
 .table--select .table-item {
   max-width: 300px;
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* Paid promotion packages */
+.promo-packages {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.promo-package {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.promo-package svg {
+  color: var(--color-primary);
+}
+
+.promo-package:hover {
+  border-color: var(--color-primary);
+}
+
+.promo-package[aria-checked='true'] {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.promo-package__days {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.promo-package__price {
+  font-size: var(--text-lg);
+}
+
+.promo-packages__note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+/* Language switch in the site header and dashboard top bar */
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill, 999px);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.lang-switch:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.lang-switch--dark {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.lang-switch--dark:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.lang-switch:lang(ar) span {
+  font-family: var(--font-arabic);
 }

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 export type FieldErrors = Record<string, string>;
 
 export class ApiError extends Error {
@@ -29,11 +30,11 @@ export class ApiError extends Error {
   }
 }
 
-export const NETWORK_ERROR_MESSAGE = 'We could not reach the server. Check your connection and try again.';
+export const NETWORK_ERROR_MESSAGE = t('We could not reach the server. Check your connection and try again.');
 
 /** Turns any thrown value into a message that is safe to show to the user. */
 export function getErrorMessage(error: unknown, fallback = 'Something went wrong. Please try again.'): string {
-  if (error instanceof ApiError) return error.message || fallback;
-  if (error instanceof Error && error.name === 'AbortError') return 'The request took too long. Please try again.';
-  return fallback;
+  if (error instanceof ApiError) return error.message || t(fallback);
+  if (error instanceof Error && error.name === 'AbortError') return t('The request took too long. Please try again.');
+  return t(fallback);
 }

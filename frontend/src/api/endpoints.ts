@@ -67,7 +67,21 @@ export const endpoints = {
   support: {
     messages: '/support/messages',
   },
+  stores: {
+    mine: '/stores/mine',
+    mineLogo: '/stores/mine/logo',
+    bySlug: (slug: string) => `/stores/${encodeURIComponent(slug)}`,
+  },
+  payments: {
+    promotions: '/payments/promotions',
+    confirmPromotion: '/payments/promotions/confirm',
+  },
   admin: {
+    payments: '/admin/payments',
+    stores: '/admin/stores',
+    storeDecision: (id: string, decision: 'verify' | 'reject' | 'suspend') => `/admin/stores/${id}/${decision}`,
+    approvePayment: (id: string) => `/admin/payments/${id}/approve`,
+    rejectPayment: (id: string) => `/admin/payments/${id}/reject`,
     moderationQueue: '/admin/moderation/listings',
     approve: (id: string) => `/admin/listings/${id}/approve`,
     reject: (id: string) => `/admin/listings/${id}/reject`,
@@ -75,6 +89,7 @@ export const endpoints = {
     users: '/admin/users',
     userStatus: (id: string) => `/admin/users/${id}/status`,
     approveUser: (id: string) => `/admin/users/${id}/approve`,
+    deleteUser: (id: string) => `/admin/users/${id}/delete`,
     history: '/admin/history',
     promotions: '/admin/promotions',
     feature: (id: string) => `/admin/listings/${id}/feature`,

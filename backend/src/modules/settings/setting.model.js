@@ -8,6 +8,9 @@ const pageSchema = new mongoose.Schema(
     title: { type: String, required: true },
     // Light formatting only: "## " headings, "- " list items and **bold**
     body: { type: String, required: true },
+    // Arabic version for the Arabic site; when empty the English page is shown
+    titleAr: { type: String, default: '' },
+    bodyAr: { type: String, default: '' },
     updatedAt: { type: Date, default: Date.now },
   },
   { _id: false }
@@ -33,6 +36,14 @@ const settingSchema = new mongoose.Schema(
     listings: {
       maxPhotos: { type: Number, default: 10, min: 1, max: 20 },
       expiryDays: { type: Number, default: 30, min: 7, max: 180 },
+    },
+    // Prices sellers pay to feature an ad, in whole riyals
+    promotions: {
+      enabled: { type: Boolean, default: true },
+      packages: {
+        type: [new mongoose.Schema({ days: { type: Number, required: true }, price: { type: Number, required: true } }, { _id: false })],
+        default: undefined,
+      },
     },
     pages: Object.fromEntries(PAGE_SLUGS.map((slug) => [slug, { type: pageSchema }])),
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

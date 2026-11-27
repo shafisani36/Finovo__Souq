@@ -10,19 +10,20 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { notificationsService } from '../../services/notifications.service';
 import type { AppNotification, NotificationType } from '../../types';
 import { formatRelative, formatTime } from '../../utils/format';
+import { t, tn } from '../../i18n';
 
 const TYPE_META: Record<NotificationType, { icon: typeof Bell; label: string }> = {
-  listing_approved: { icon: CheckCircle2, label: 'Ad approved' },
-  changes_required: { icon: FileEdit, label: 'Needs changes' },
-  listing_rejected: { icon: XCircle, label: 'Ad rejected' },
-  new_message: { icon: MessageSquare, label: 'Message' },
-  report_update: { icon: Flag, label: 'Report' },
-  system: { icon: Bell, label: 'Update' },
-  saved_search_match: { icon: BellRing, label: 'Search alert' },
-  price_drop: { icon: TrendingDown, label: 'Price drop' },
-  listing_expiring: { icon: Hourglass, label: 'Expiring soon' },
-  listing_expired: { icon: TimerOff, label: 'Ad expired' },
-  listing_featured: { icon: Sparkles, label: 'Featured' },
+  listing_approved: { icon: CheckCircle2, label: t('Ad approved') },
+  changes_required: { icon: FileEdit, label: t('Needs changes') },
+  listing_rejected: { icon: XCircle, label: t('Ad rejected') },
+  new_message: { icon: MessageSquare, label: t('Message') },
+  report_update: { icon: Flag, label: t('Report') },
+  system: { icon: Bell, label: t('Update') },
+  saved_search_match: { icon: BellRing, label: t('Search alert') },
+  price_drop: { icon: TrendingDown, label: t('Price drop') },
+  listing_expiring: { icon: Hourglass, label: t('Expiring soon') },
+  listing_expired: { icon: TimerOff, label: t('Ad expired') },
+  listing_featured: { icon: Sparkles, label: t('Featured') },
 };
 
 type Filter = 'all' | 'unread';
@@ -35,12 +36,12 @@ function groupLabel(iso: string): string {
   const time = new Date(iso).getTime();
   if (time >= startOfToday.getTime()) return 'Today';
   if (time >= startOfToday.getTime() - DAY_MS) return 'Yesterday';
-  if (time >= startOfToday.getTime() - 6 * DAY_MS) return 'This week';
+  if (time >= startOfToday.getTime() - 6 * DAY_MS) return t('This week');
   return 'Earlier';
 }
 
 export function NotificationsPage() {
-  useDocumentTitle('Notifications');
+  useDocumentTitle(t('Notifications'));
   const navigate = useNavigate();
   const toast = useToast();
   const notifications = useAsync(() => notificationsService.list(), []);
@@ -83,7 +84,7 @@ export function NotificationsPage() {
       await notificationsService.markAllRead();
       markRead(ids);
     } catch {
-      toast.show({ title: 'Notifications could not be updated', tone: 'error' });
+      toast.show({ title: t('Notifications could not be updated'), tone: 'error' });
     } finally {
       setMarkingAll(false);
     }
@@ -92,24 +93,24 @@ export function NotificationsPage() {
   return (
     <>
       <PageHeader
-        title="Notifications"
-        subtitle={notifications.data ? (unreadCount ? `You have ${unreadCount} unread ${unreadCount === 1 ? 'notification' : 'notifications'}` : 'You are all caught up') : undefined}
+        title={t('Notifications')}
+        subtitle={notifications.data ? (unreadCount ? tn(unreadCount, 'You have {count} unread notification', 'You have {count} unread notifications') : t('You are all caught up')) : undefined}
         actions={
           <Button icon={<CheckCheck size={16} />} onClick={markAllRead} isLoading={markingAll} disabled={!unreadCount}>
-            Mark all as read
+            {t('Mark all as read')}
           </Button>
         }
       />
 
       <section className="card notif">
         <div className="notif__toolbar">
-          <div className="segmented" role="tablist" aria-label="Filter notifications">
+          <div className="segmented" role="tablist" aria-label={t('Filter notifications')}>
             <button type="button" role="tab" aria-selected={filter === 'all'} className="segmented__item" onClick={() => setFilter('all')}>
-              All
+              {t('All')}
               <span className="segmented__count">{all.length}</span>
             </button>
             <button type="button" role="tab" aria-selected={filter === 'unread'} className="segmented__item" onClick={() => setFilter('unread')}>
-              Unread
+              {t('Unread')}
               <span className="segmented__count">{unreadCount}</span>
             </button>
           </div>
@@ -126,8 +127,8 @@ export function NotificationsPage() {
         ) : groups.length === 0 ? (
           <EmptyState
             icon={<Bell size={26} />}
-            title={filter === 'unread' ? 'Nothing unread' : 'No notifications yet'}
-            text={filter === 'unread' ? 'New updates about your ads and messages will show up here.' : 'Updates about your ads and messages will appear here.'}
+            title={filter === 'unread' ? t('Nothing unread') : t('No notifications yet')}
+            text={filter === 'unread' ? t('New updates about your ads and messages will show up here.') : t('Updates about your ads and messages will appear here.')}
           />
         ) : (
           groups.map((group) => (
@@ -153,7 +154,7 @@ export function NotificationsPage() {
                             {formatRelative(n.createdAt)}
                           </time>
                         </span>
-                        {!n.read && <span className="notif__dot" aria-label="Unread" />}
+                        {!n.read && <span className="notif__dot" aria-label={t('Unread')} />}
                         {n.link && <ChevronRight size={18} className="notif__chevron" aria-hidden="true" />}
                       </button>
                     </li>

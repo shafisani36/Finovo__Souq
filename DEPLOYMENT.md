@@ -30,6 +30,7 @@ In `backend/.env` set:
 |---|---|
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Two **different** random strings of 64+ characters: `openssl rand -hex 64` |
 | `MAIL_*` | SMTP account for password reset and seller approval emails (Gmail needs an App Password) |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Card payments for paid featured ads. In Stripe Dashboard → Developers → Webhooks add the endpoint `https://YOUR-DOMAIN/api/v1/payments/stripe/webhook` with the events `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` and `checkout.session.expired`, then copy its signing secret. Use live keys (`sk_live_`) only on the real site. Leave both empty to switch paid promotion off |
 
 `MONGODB_URI`, `REDIS_*`, `CLIENT_URL`, `NODE_ENV` and `UPLOAD_DIR` are set by `docker-compose.yml`. The API refuses to start in production with short or identical secrets, or without an `https://` site address.
 

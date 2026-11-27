@@ -21,6 +21,7 @@ export const buildTree = (docs) => {
     nodes.set(d._id.toString(), {
       id: d._id.toString(),
       name: d.name,
+      nameAr: d.nameAr ?? '',
       slug: d.slug,
       parentId: d.parent ? d.parent.toString() : null,
       description: d.description ?? '',
@@ -114,10 +115,11 @@ export const categorySummary = (tree, categoryId) => {
   return {
     categorySlug: node.slug,
     categoryName: node.name,
+    categoryNameAr: node.nameAr,
     categoryIcon: node.icon,
     categoryTrail: node.path.map((id) => {
       const n = tree.nodes.get(id)
-      return { id: n.id, name: n.name, slug: n.slug }
+      return { id: n.id, name: n.name, nameAr: n.nameAr, slug: n.slug }
     }),
   }
 }

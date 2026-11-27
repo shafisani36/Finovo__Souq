@@ -8,6 +8,7 @@ import ApiError from '../../utils/ApiError.js'
 import { toText } from '../../utils/pagination.js'
 import { SAUDI_CITIES } from '../../config/catalog.js'
 import { saveImage, removeFile } from '../../services/storage.service.js'
+import { notify } from '../../services/notification.service.js'
 import User from './user.model.js'
 
 const router = Router()
@@ -70,9 +71,30 @@ router.delete('/me/avatar', asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, user, 'Profile photo removed'))
 }))
 
-router.post('/me/deletion-request', asyncHandler(async (req, res) => {
-  await User.updateOne({ _id: req.user.id }, { deletionRequestedAt: new Date() })
-  res.json(new ApiResponse(200, null, 'Deletion request received'))
+// The team reviews the request and deletes the account; until then the person can cancel it
+router.post('/me/deletion-request', writeLimiter, asyncHandler(async (req, res) => {
+  const user = await findMe(req)
+  if (user.role === 'admin') throw new ApiError(409, 'Admin accounts cannot be deleted this way')
+  const firstRequest = !user.deletionRequestedAt
+  user.deletionRequestedAt ??= new Date()
+  user.deletionReason = toText(req.body.reason).slice(0, 500) || null
+  await user.save()
+
+  if (firstRequest) {
+    const admins = await User.find({ role: 'admin', status: 'active' }).select('_id').lean()
+    await Promise.all(admins.map((admin) => notify(admin._id, {
+      type: 'system',
+      title: 'Account deletion request',
+      body: `${user.name} asked for their account to be deleted.`,
+      link: '/admin/users?deletion=requested',
+    })))
+  }
+  res.json(new ApiResponse(200, { deletionRequestedAt: user.deletionRequestedAt }, 'Deletion request received. Our team will process it within 30 days.'))
+}))
+
+router.delete('/me/deletion-request', writeLimiter, asyncHandler(async (req, res) => {
+  await User.updateOne({ _id: req.user.id }, { $set: { deletionRequestedAt: null, deletionReason: null } })
+  res.json(new ApiResponse(200, null, 'Deletion request cancelled'))
 }))
 
 export default router

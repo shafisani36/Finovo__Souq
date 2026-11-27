@@ -31,6 +31,8 @@ const fieldSchema = new mongoose.Schema(
 const categorySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 60 },
+    // Shown on the Arabic site; when empty the English name is translated or shown as it is
+    nameAr: { type: String, trim: true, maxlength: 60, default: '' },
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
     parent: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
     ancestors: { type: [mongoose.Schema.Types.ObjectId], default: [] },

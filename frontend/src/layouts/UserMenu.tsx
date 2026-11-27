@@ -5,6 +5,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../features/auth/context/useAuth';
 import { ROLE_HOME, ROLE_LABELS, rolePath } from '../features/auth/rbac';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { t } from '../i18n';
 
 export function UserMenu({ showName = true }: { showName?: boolean }) {
   const { user, logout } = useAuth();
@@ -42,10 +43,10 @@ export function UserMenu({ showName = true }: { showName?: boolean }) {
             </p>
           </div>
           <button type="button" role="menuitem" className="dropdown__item" onClick={() => go(ROLE_HOME[user.role])}>
-            <LayoutDashboard size={16} /> Dashboard
+            <LayoutDashboard size={16} /> {t('Dashboard')}
           </button>
           <button type="button" role="menuitem" className="dropdown__item" onClick={() => go(rolePath(user.role, 'profile'))}>
-            <UserCog size={16} /> Profile and settings
+            <UserCog size={16} /> {t('Profile and settings')}
           </button>
           <button
             type="button"
@@ -58,7 +59,7 @@ export function UserMenu({ showName = true }: { showName?: boolean }) {
               void logout();
             }}
           >
-            <LogOut size={16} /> Sign out
+            <LogOut size={16} /> {t('Sign out')}
           </button>
         </div>
       )}

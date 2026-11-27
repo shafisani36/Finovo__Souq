@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { t } from '../../i18n';
 
 function pageWindow(current: number, total: number): (number | 'gap')[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -15,8 +16,8 @@ function pageWindow(current: number, total: number): (number | 'gap')[] {
 export function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
   if (totalPages <= 1) return null;
   return (
-    <nav className="pagination" aria-label="Pagination">
-      <button type="button" className="pagination__page" onClick={() => onChange(page - 1)} disabled={page <= 1} aria-label="Previous page">
+    <nav className="pagination" aria-label={t('Pagination')}>
+      <button type="button" className="pagination__page" onClick={() => onChange(page - 1)} disabled={page <= 1} aria-label={t('Previous page')}>
         <ChevronLeft size={16} />
       </button>
       {pageWindow(page, totalPages).map((item, index) =>
@@ -25,18 +26,12 @@ export function Pagination({ page, totalPages, onChange }: { page: number; total
             ...
           </span>
         ) : (
-          <button
-            key={item}
-            type="button"
-            className="pagination__page"
-            aria-current={item === page ? 'page' : undefined}
-            onClick={() => onChange(item)}
-          >
+          <button key={item} type="button" className="pagination__page" aria-current={item === page ? 'page' : undefined} onClick={() => onChange(item)}>
             {item}
           </button>
         ),
       )}
-      <button type="button" className="pagination__page" onClick={() => onChange(page + 1)} disabled={page >= totalPages} aria-label="Next page">
+      <button type="button" className="pagination__page" onClick={() => onChange(page + 1)} disabled={page >= totalPages} aria-label={t('Next page')}>
         <ChevronRight size={16} />
       </button>
     </nav>

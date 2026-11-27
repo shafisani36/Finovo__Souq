@@ -33,12 +33,9 @@ export const validateRegister = (data) => {
     errors.push(...passwordResult.errors)
   }
 
-  if (
-    phone !== undefined &&
-    phone !== null &&
-    typeof phone !== 'string'
-  ) {
-    errors.push('Phone must be a string')
+  // Optional; when given it must be a Saudi mobile, the same rule as the profile form
+  if (phone !== undefined && phone !== null && phone !== '' && (typeof phone !== 'string' || !/^\+9665\d{8}$/.test(phone))) {
+    errors.push({ field: 'phone', message: 'Enter a Saudi mobile number like +9665XXXXXXXX' })
   }
 
   return {

@@ -2719,6 +2719,82 @@
   padding: var(--space-8);
 }
 
+.legal__main {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+/* Safe places to meet (Safety page) */
+.meet-places {
+  padding: var(--space-8);
+  scroll-margin-top: calc(var(--header-height, 72px) + var(--space-4));
+}
+
+.meet-places .card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.meet-places__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.meet-places__place {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.meet-places__place strong {
+  color: var(--color-text);
+}
+
+.meet-places__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.meet-places__subtitle {
+  margin: var(--space-6) 0 var(--space-2);
+  font-size: var(--text-md, 1rem);
+}
+
+.meet-places__checklist {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 640px) {
+  .meet-places {
+    padding: var(--space-5);
+  }
+
+  .meet-places__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .legal__aside {
   position: sticky;
   top: calc(var(--header-height, 72px) + var(--space-4));

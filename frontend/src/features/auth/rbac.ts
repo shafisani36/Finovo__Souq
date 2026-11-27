@@ -1,4 +1,5 @@
 import type { User, UserRole } from '../../types';
+import { t } from '../../i18n';
 
 /**
  * Role-based access control for the UI.
@@ -44,8 +45,8 @@ export const ROLE_HOME: Record<UserRole, string> = {
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  admin: 'Administrator',
-  user: 'Member',
+  admin: t('Administrator'),
+  user: t('Member'),
 };
 
 /** Builds a path inside the role's private area, e.g. rolePath('user', 'messages') -> /account/messages */

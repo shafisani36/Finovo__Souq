@@ -72,4 +72,8 @@ export const authService = {
   requestDeletion(reason: string): Promise<void> {
     return apiClient.post<void>(endpoints.users.deletionRequest, { reason });
   },
+
+  cancelDeletion(): Promise<void> {
+    return apiClient.delete<void>(endpoints.users.deletionRequest);
+  },
 };

@@ -27,6 +27,7 @@ const liveCountsByCategory = async () => {
 const publicView = (node, counts) => ({
   id: node.id,
   name: node.name,
+  nameAr: node.nameAr,
   slug: node.slug,
   parentId: node.parentId,
   depth: node.depth,
@@ -95,6 +96,7 @@ adminCategoryRouter.get('/', asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, tree.ordered.map((n) => ({
     id: n.id,
     name: n.name,
+    nameAr: n.nameAr,
     slug: n.slug,
     parentId: n.parentId,
     depth: n.depth,

@@ -4,6 +4,7 @@ import type { Listing } from '../../types';
 import { formatNumber, formatPrice, formatRelative, LISTING_TYPE_LABELS } from '../../utils/format';
 import { ListingImage } from './ListingImage';
 import { SaveButton } from './SaveButton';
+import { t, tn } from '../../i18n';
 
 /** Two quick facts chosen from the details the ad has, so it works for every category */
 function KeyFacts({ listing }: { listing: Listing }) {
@@ -11,20 +12,34 @@ function KeyFacts({ listing }: { listing: Listing }) {
   if (a.year !== undefined && a.mileage !== undefined) {
     return (
       <>
-        <span><CalendarDays size={14} />{a.year}</span>
-        <span><Gauge size={14} />{formatNumber(Number(a.mileage))} km</span>
+        <span>
+          <CalendarDays size={14} />
+          {a.year}
+        </span>
+        <span>
+          <Gauge size={14} />
+          {formatNumber(Number(a.mileage))} {t('km')}
+        </span>
       </>
     );
   }
   if (a.area !== undefined) {
     return (
       <>
-        {Number(a.bedrooms) > 0 && <span><BedDouble size={14} />{a.bedrooms} {Number(a.bedrooms) === 1 ? 'bed' : 'beds'}</span>}
-        <span><Ruler size={14} />{formatNumber(Number(a.area))} m²</span>
+        {Number(a.bedrooms) > 0 && (
+          <span>
+            <BedDouble size={14} />
+            {tn(Number(a.bedrooms), '{count} bed', '{count} beds')}
+          </span>
+        )}
+        <span>
+          <Ruler size={14} />
+          {formatNumber(Number(a.area))} {t('m²')}
+        </span>
       </>
     );
   }
-  const details = [a.brand ?? a.make ?? a.partType ?? a.propertyType, a.condition].filter(Boolean);
+  const details = [a.brand ?? a.make ?? a.partType ?? a.propertyType, a.condition].filter(Boolean).map((d) => t(String(d)));
   return details.length ? <span>{details.join(' · ')}</span> : <span>{listing.categoryName}</span>;
 }
 
@@ -37,7 +52,7 @@ export function ListingCard({ listing, showSave = true }: { listing: Listing; sh
         <span className="listing-card__badges">
           {listing.featuredUntil && (
             <span className="listing-card__featured">
-              <Sparkles size={12} /> Featured
+              <Sparkles size={12} /> {t('Featured')}
             </span>
           )}
           <span className="listing-card__type">{LISTING_TYPE_LABELS[listing.listingType]}</span>
@@ -53,7 +68,7 @@ export function ListingCard({ listing, showSave = true }: { listing: Listing; sh
         <div className="listing-card__footer">
           <span>
             <MapPin size={14} />
-            {listing.city}
+            {t(listing.city)}
           </span>
           <span>{formatRelative(listing.publishedAt ?? listing.createdAt)}</span>
         </div>

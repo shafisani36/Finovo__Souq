@@ -11,13 +11,15 @@ import { categoriesService } from '../services/categories.service';
 import { settingsService } from '../services/settings.service';
 import type { SocialNetwork } from '../types';
 import { UserMenu } from './UserMenu';
+import { LanguageSwitch } from '../components/ui/LanguageSwitch';
+import { t } from '../i18n';
 
 const NAV_LINKS = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/search', label: 'Browse ads', end: false },
-  { to: '/about', label: 'About', end: true },
+  { to: '/', label: t('Home'), end: true },
+  { to: '/search', label: t('Browse ads'), end: false },
+  { to: '/about', label: t('About'), end: true },
   { to: '/faq', label: 'FAQ', end: true },
-  { to: '/contact', label: 'Contact', end: true },
+  { to: '/contact', label: t('Contact'), end: true },
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -105,15 +107,15 @@ export function PublicLayout() {
               {announcement.link &&
                 (announcement.link.startsWith('/') ? (
                   <Link to={announcement.link} className="announcement__link">
-                    Learn more
+                    {t('Learn more')}
                   </Link>
                 ) : (
                   <a href={announcement.link} className="announcement__link" target="_blank" rel="noopener noreferrer">
-                    Learn more
+                    {t('Learn more')}
                   </a>
                 ))}
             </p>
-            <button type="button" className="announcement__close" onClick={dismissAnnouncement} aria-label="Close announcement">
+            <button type="button" className="announcement__close" onClick={dismissAnnouncement} aria-label={t('Close announcement')}>
               <X size={16} />
             </button>
           </div>
@@ -122,7 +124,7 @@ export function PublicLayout() {
       <header className={`site-header${dark ? ' site-header--dark' : ''}`}>
         <div className="container site-header__inner">
           <Logo tone={dark ? 'light' : 'dark'} />
-          <nav className={`site-nav${menuOpen ? ' site-nav--open' : ''}`} aria-label="Main">
+          <nav className={`site-nav${menuOpen ? ' site-nav--open' : ''}`} aria-label={t('Main')}>
             {NAV_LINKS.map((link) => (
               <NavLink key={link.to} to={link.to} end={link.end} className="site-nav__link" onClick={() => setMenuOpenedOn(null)}>
                 {link.label}
@@ -130,22 +132,23 @@ export function PublicLayout() {
             ))}
           </nav>
           <div className="site-header__actions">
+            <LanguageSwitch dark={dark} />
             {postAdLink && (
               <ButtonLink to={postAdLink} variant="primary" size="sm" icon={<PlusCircle size={16} />} className="hide-sm">
-                Post an ad
+                {t('Post an ad')}
               </ButtonLink>
             )}
             {user ? (
               <UserMenu showName={false} />
             ) : (
               <ButtonLink to="/login" size="sm" className={dark ? 'btn--outline-light' : undefined}>
-                Sign in
+                {t('Sign in')}
               </ButtonLink>
             )}
             <button
               type="button"
               className="icon-btn icon-btn--sm show-md site-header__toggle"
-              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-label={menuOpen ? t('Close menu') : t('Open menu')}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpenedOn(menuOpen ? null : location.pathname)}
             >
@@ -161,14 +164,14 @@ export function PublicLayout() {
         <div className="container site-footer__inner">
           <div className="site-footer__brand">
             <Logo tone="light" />
-            <p>Buy and sell cars, property, everyday items and services across Saudi Arabia. Finovo Souq connects buyers and sellers directly; we do not handle payments for listed items.</p>
+            <p>{t('Buy and sell cars, property, everyday items and services across Saudi Arabia. Finovo Souq connects buyers and sellers directly; we do not handle payments for listed items.')}</p>
             {contact?.email && (
               <a href={`mailto:${contact.email}`} className="site-footer__mail">
                 <Mail size={15} /> {contact.email}
               </a>
             )}
             {socialLinks.length > 0 && (
-              <ul className="site-footer__social" aria-label="Follow us">
+              <ul className="site-footer__social" aria-label={t('Follow us')}>
                 {socialLinks.map(([network, url]) => (
                   <li key={network}>
                     <a href={url} target="_blank" rel="noopener noreferrer">
@@ -180,7 +183,7 @@ export function PublicLayout() {
             )}
           </div>
           <div>
-            <h4>Categories</h4>
+            <h4>{t('Categories')}</h4>
             <ul>
               {topCategories.map((c) => (
                 <li key={c.id}>
@@ -190,62 +193,64 @@ export function PublicLayout() {
             </ul>
           </div>
           <div>
-            <h4>Company</h4>
+            <h4>{t('Company')}</h4>
             <ul>
               <li>
-                <Link to="/about">About us</Link>
+                <Link to="/about">{t('About us')}</Link>
               </li>
               <li>
-                <Link to="/contact">Contact</Link>
+                <Link to="/contact">{t('Contact')}</Link>
               </li>
             </ul>
           </div>
           <div>
-            <h4>Help</h4>
+            <h4>{t('Help')}</h4>
             <ul>
               <li>
-                <Link to="/help">Help centre</Link>
+                <Link to="/help">{t('Help centre')}</Link>
               </li>
               <li>
                 <Link to="/faq">FAQ</Link>
               </li>
               <li>
-                <Link to="/safety">Safety tips</Link>
+                <Link to="/safety">{t('Safety tips')}</Link>
               </li>
               <li>
-                <Link to="/terms">Terms of use</Link>
+                <Link to="/terms">{t('Terms of use')}</Link>
               </li>
               <li>
-                <Link to="/privacy">Privacy policy</Link>
+                <Link to="/privacy">{t('Privacy policy')}</Link>
               </li>
             </ul>
           </div>
           <div>
-            <h4>Account</h4>
+            <h4>{t('Account')}</h4>
             <ul>
               {user ? (
                 <li>
-                  <Link to={ROLE_HOME[user.role]}>My dashboard</Link>
+                  <Link to={ROLE_HOME[user.role]}>{t('My dashboard')}</Link>
                 </li>
               ) : (
                 <>
                   <li>
-                    <Link to="/register">Create account</Link>
+                    <Link to="/register">{t('Create account')}</Link>
                   </li>
                   <li>
-                    <Link to="/login">Sign in</Link>
+                    <Link to="/login">{t('Sign in')}</Link>
                   </li>
                 </>
               )}
               <li>
-                <Link to="/search">Browse ads</Link>
+                <Link to="/search">{t('Browse ads')}</Link>
               </li>
             </ul>
           </div>
         </div>
         <div className="container site-footer__bottom">
-          <span>© {CURRENT_YEAR} Finovo Souq. All prices in SAR.</span>
-          <span>Meet in public places · Inspect before you pay · Never send deposits in advance</span>
+          <span>
+            © {CURRENT_YEAR} {t('Finovo Souq. All prices in SAR.')}
+          </span>
+          <span>{t('Meet in public places · Inspect before you pay · Never send deposits in advance')}</span>
         </div>
       </footer>
     </div>

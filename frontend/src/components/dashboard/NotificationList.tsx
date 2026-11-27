@@ -2,6 +2,7 @@ import { Bell, BellRing, Sparkles, CheckCircle2, FileEdit, Flag, Hourglass, Mess
 import { Link } from 'react-router-dom';
 import type { AppNotification, NotificationType } from '../../types';
 import { formatRelative } from '../../utils/format';
+import { t } from '../../i18n';
 
 const ICONS: Record<NotificationType, typeof Bell> = {
   listing_approved: CheckCircle2,
@@ -23,7 +24,7 @@ interface NotificationListProps {
 }
 
 export function NotificationList({ notifications, onOpen }: NotificationListProps) {
-  if (!notifications.length) return <p className="text-muted">You are all caught up.</p>;
+  if (!notifications.length) return <p className="text-muted">{t('You are all caught up.')}</p>;
   return (
     <ul className="notification-list">
       {notifications.map((n) => {
@@ -40,7 +41,7 @@ export function NotificationList({ notifications, onOpen }: NotificationListProp
               </div>
               <p className="preview-list__text">{n.body}</p>
             </div>
-            {!n.read && <span className="unread-dot" aria-label="Unread" />}
+            {!n.read && <span className="unread-dot" aria-label={t('Unread')} />}
           </>
         );
         return (

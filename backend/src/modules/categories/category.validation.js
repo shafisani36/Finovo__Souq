@@ -59,6 +59,10 @@ export const validateCategory = (body, { partial = false } = {}) => {
     data.name = toText(body.name)
     if (data.name.length < 2 || data.name.length > 60) errors.name = 'Name must be 2 to 60 characters'
   }
+  if (body.nameAr !== undefined) {
+    data.nameAr = toText(body.nameAr)
+    if (data.nameAr.length > 60) errors.nameAr = 'Arabic name must be at most 60 characters'
+  }
   if (body.slug !== undefined && body.slug !== '') {
     data.slug = toText(body.slug).toLowerCase()
     if (!SLUG_PATTERN.test(data.slug) || data.slug.length > 60) errors.slug = 'Use lowercase letters, digits and dashes only'

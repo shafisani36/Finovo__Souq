@@ -18,22 +18,23 @@ import { categoriesService } from '../../services/categories.service';
 import { listingsService } from '../../services/listings.service';
 import type { Listing, ListingStatus } from '../../types';
 import { formatDate, formatNumber, formatPrice, formatRelative, LISTING_TYPE_LABELS } from '../../utils/format';
+import { t } from '../../i18n';
 
 const STATUS_TABS: { value: ListingStatus | 'all'; label: string }[] = [
-  { value: 'pending_review', label: 'Pending' },
-  { value: 'changes_required', label: 'Changes required' },
-  { value: 'published', label: 'Live' },
-  { value: 'hidden', label: 'Hidden' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: 'all', label: 'All' },
+  { value: 'pending_review', label: t('Pending') },
+  { value: 'changes_required', label: t('Changes required') },
+  { value: 'published', label: t('Live') },
+  { value: 'hidden', label: t('Hidden') },
+  { value: 'rejected', label: t('Rejected') },
+  { value: 'all', label: t('All') },
 ];
 
 type DecisionMode = 'changes' | 'reject' | 'hide';
 
 const DECISION_COPY: Record<DecisionMode, { title: string; button: string; help: string }> = {
-  changes: { title: 'Request changes', button: 'Send to seller', help: 'Tell the seller exactly what to fix. They can edit and resubmit.' },
-  reject: { title: 'Reject ad', button: 'Reject ad', help: 'The ad will not be published. Explain why so the seller understands.' },
-  hide: { title: 'Hide ad', button: 'Hide ad', help: 'The ad is removed from public view immediately. The reason is recorded in moderation history.' },
+  changes: { title: t('Request changes'), button: 'Send to seller', help: t('Tell the seller exactly what to fix. They can edit and resubmit.') },
+  reject: { title: t('Reject ad'), button: 'Reject ad', help: t('The ad will not be published. Explain why so the seller understands.') },
+  hide: { title: t('Hide ad'), button: 'Hide ad', help: t('The ad is removed from public view immediately. The reason is recorded in moderation history.') },
 };
 
 function ReviewPanel({ listing, onDone }: { listing: Listing; onDone: (updated: Listing) => void }) {
@@ -63,7 +64,7 @@ function ReviewPanel({ listing, onDone }: { listing: Listing; onDone: (updated: 
     event.preventDefault();
     if (!mode) return;
     if (reason.trim().length < 10) {
-      setError('Explain the reason in at least 10 characters.');
+      setError(t('Explain the reason in at least 10 characters.'));
       return;
     }
     if (mode === 'hide') void run('hide', () => adminService.hide(listing.id, reason.trim()), 'Ad hidden');
@@ -87,24 +88,21 @@ function ReviewPanel({ listing, onDone }: { listing: Listing; onDone: (updated: 
       <p className="detail__price tabular">{formatPrice(listing.price, listing.listingType)}</p>
       <dl className="spec-grid spec-grid--compact">
         <div>
-          <dt>Seller</dt>
+          <dt>{t('Seller')}</dt>
+          <dd>{listing.seller.name}</dd>
+        </div>
+        <div>
+          <dt>{t('Location')}</dt>
           <dd>
-            {listing.seller.name}
-            {listing.seller.phoneVerified ? ' (phone verified)' : ''}
+            {listing.district}, {t(listing.city)}
           </dd>
         </div>
         <div>
-          <dt>Location</dt>
-          <dd>
-            {listing.district}, {listing.city}
-          </dd>
-        </div>
-        <div>
-          <dt>Submitted</dt>
+          <dt>{t('Submitted')}</dt>
           <dd>{formatDate(listing.updatedAt)}</dd>
         </div>
         <div>
-          <dt>Photos</dt>
+          <dt>{t('Photos')}</dt>
           <dd>{listing.photos.length}</dd>
         </div>
         {category?.fields.map((f) =>
@@ -112,7 +110,7 @@ function ReviewPanel({ listing, onDone }: { listing: Listing; onDone: (updated: 
             <div key={f.fieldKey}>
               <dt>{f.label}</dt>
               <dd>
-                {f.inputType === 'number' && f.fieldKey !== 'year' ? formatNumber(Number(listing.attributes[f.fieldKey])) : String(listing.attributes[f.fieldKey])}
+                {f.inputType === 'number' && f.fieldKey !== 'year' ? formatNumber(Number(listing.attributes[f.fieldKey])) : t(String(listing.attributes[f.fieldKey]))}
                 {f.unit ? ` ${f.unit}` : ''}
               </dd>
             </div>
@@ -120,13 +118,15 @@ function ReviewPanel({ listing, onDone }: { listing: Listing; onDone: (updated: 
         )}
       </dl>
       <div className="review__description">
-        <h3 className="field__label">Description</h3>
+        <h3 className="field__label">{t('Description')}</h3>
         <p>{listing.description}</p>
       </div>
       {listing.moderationNote && (
         <div className="alert alert--warning">
           <FileEdit size={16} />
-          <span>Previous note: {listing.moderationNote}</span>
+          <span>
+            {t('Previous note:')} {listing.moderationNote}
+          </span>
         </div>
       )}
       {error && (
@@ -138,7 +138,9 @@ function ReviewPanel({ listing, onDone }: { listing: Listing; onDone: (updated: 
       {mode ? (
         <form className="review__decision" onSubmit={submitDecision}>
           <TextareaField
-            label={`${DECISION_COPY[mode].title}: reason`}
+            label={t('{title}: reason', {
+              title: DECISION_COPY[mode].title,
+            })}
             hint={DECISION_COPY[mode].help}
             value={reason}
             onChange={(e) => {
@@ -157,7 +159,7 @@ function ReviewPanel({ listing, onDone }: { listing: Listing; onDone: (updated: 
                 setError('');
               }}
             >
-              Back
+              {t('Back')}
             </Button>
             <Button type="submit" variant={mode === 'changes' ? 'primary' : 'danger'} isLoading={busy === mode}>
               {DECISION_COPY[mode].button}
@@ -169,23 +171,23 @@ function ReviewPanel({ listing, onDone }: { listing: Listing; onDone: (updated: 
           {isPending && (
             <>
               <Button variant="success" icon={<CheckCircle2 size={16} />} isLoading={busy === 'approve'} onClick={() => run('approve', () => adminService.approve(listing.id), 'Ad approved and live')}>
-                Approve
+                {t('Approve')}
               </Button>
               <Button icon={<FileEdit size={16} />} onClick={() => setMode('changes')}>
-                Request changes
+                {t('Request changes')}
               </Button>
               <Button variant="danger" icon={<XCircle size={16} />} onClick={() => setMode('reject')}>
-                Reject
+                {t('Reject')}
               </Button>
             </>
           )}
           {canHide && (
             <Button variant="danger" icon={<EyeOff size={16} />} onClick={() => setMode('hide')}>
-              Hide
+              {t('Hide')}
             </Button>
           )}
           <Link to={`/listings/${listing.id}`} className="btn btn--ghost" target="_blank" rel="noopener">
-            Open ad page
+            {t('Open ad page')}
           </Link>
         </div>
       )}
@@ -205,13 +207,13 @@ function QuerySearch({ initial, onSearch }: { initial: string; onSearch: (value:
       }}
     >
       <Search size={16} aria-hidden="true" />
-      <input type="search" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Search title or seller" aria-label="Search ads" />
+      <input type="search" value={value} onChange={(e) => setValue(e.target.value)} placeholder={t('Search title or seller')} aria-label={t('Search ads')} />
     </form>
   );
 }
 
 export function ModerationPage() {
-  useDocumentTitle('Moderation');
+  useDocumentTitle(t('Moderation'));
   const [searchParams, setSearchParams] = useSearchParams();
   const status = searchParams.get('status') ?? 'pending_review';
   const q = searchParams.get('q') ?? '';
@@ -231,11 +233,11 @@ export function ModerationPage() {
 
   return (
     <>
-      <PageHeader title="Moderation" subtitle="Only approved ads appear in public search. Every decision is recorded with your name and reason." />
+      <PageHeader title={t('Moderation')} subtitle={t('Only approved ads appear in public search. Every decision is recorded with your name and reason.')} />
 
       <section className="card">
         <div className="toolbar">
-          <div className="segmented segmented--scroll" role="tablist" aria-label="Status">
+          <div className="segmented segmented--scroll" role="tablist" aria-label={t('Status')}>
             {STATUS_TABS.map((tab) => (
               <button key={tab.value} type="button" role="tab" aria-selected={status === tab.value} className="segmented__item" onClick={() => update({ status: tab.value, page: null })}>
                 {tab.label}
@@ -250,20 +252,20 @@ export function ModerationPage() {
         ) : queue.isLoading || !queue.data ? (
           <SkeletonBlock height={320} />
         ) : queue.data.items.length === 0 ? (
-          <EmptyState icon={<ShieldCheck size={26} />} title="Nothing here" text={status === 'pending_review' ? 'No ads are waiting for review.' : 'No ads match these filters.'} />
+          <EmptyState icon={<ShieldCheck size={26} />} title={t('Nothing here')} text={status === 'pending_review' ? t('No ads are waiting for review.') : t('No ads match these filters.')} />
         ) : (
           <>
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Ad</th>
-                    <th>Seller</th>
-                    <th>Status</th>
-                    <th className="table__num">Price</th>
-                    <th className="table__num">Updated</th>
+                    <th>{t('Ad')}</th>
+                    <th>{t('Seller')}</th>
+                    <th>{t('Status')}</th>
+                    <th className="table__num">{t('Price')}</th>
+                    <th className="table__num">{t('Updated')}</th>
                     <th className="table__num">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{t('Actions')}</span>
                     </th>
                   </tr>
                 </thead>
@@ -278,7 +280,7 @@ export function ModerationPage() {
                           <span>
                             <span className="table-item__title">{listing.title}</span>
                             <span className="table-item__meta">
-                              {listing.categoryName} - {listing.city}
+                              {listing.categoryName} - {t(listing.city)}
                             </span>
                           </span>
                         </div>
@@ -292,7 +294,7 @@ export function ModerationPage() {
                       <td>
                         <div className="table__actions">
                           <Button size="sm" variant={listing.status === 'pending_review' ? 'primary' : 'default'} onClick={() => update({ review: listing.id })}>
-                            {listing.status === 'pending_review' ? 'Review' : 'View'}
+                            {listing.status === 'pending_review' ? t('Review') : t('View')}
                           </Button>
                         </div>
                       </td>
@@ -306,9 +308,9 @@ export function ModerationPage() {
         )}
       </section>
 
-      <Modal open={Boolean(reviewId)} title={review.data?.title ?? 'Review ad'} onClose={closeReview} maxWidth={680}>
+      <Modal open={Boolean(reviewId)} title={review.data?.title ?? t('Review ad')} onClose={closeReview} maxWidth={680}>
         {review.isLoading ? (
-          <LoadingState label="Loading ad..." />
+          <LoadingState label={t('Loading ad...')} />
         ) : review.error || !review.data ? (
           <ErrorState error={review.error} onRetry={review.reload} />
         ) : (

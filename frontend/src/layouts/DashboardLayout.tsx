@@ -8,6 +8,8 @@ import { NAVIGATION } from '../features/auth/navigation';
 import { canSell, ROLE_HOME, rolePath } from '../features/auth/rbac';
 import { UserMenu } from './UserMenu';
 import { useNavCounters } from './useNavCounters';
+import { LanguageSwitch } from '../components/ui/LanguageSwitch';
+import { t, tn } from '../i18n';
 
 function isTypingTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
@@ -51,10 +53,10 @@ export function DashboardLayout() {
 
   return (
     <div className="dash">
-      <aside className={`sidebar${sidebarOpen ? ' sidebar--open' : ''}`} aria-label="Dashboard navigation">
+      <aside className={`sidebar${sidebarOpen ? ' sidebar--open' : ''}`} aria-label={t('Dashboard navigation')}>
         <div className="sidebar__head">
           <Logo to={ROLE_HOME[user.role]} />
-          <button type="button" className="icon-btn icon-btn--sm show-lg" onClick={() => setSidebarOpen(false)} aria-label="Close menu">
+          <button type="button" className="icon-btn icon-btn--sm show-lg" onClick={() => setSidebarOpen(false)} aria-label={t('Close menu')}>
             <X size={16} />
           </button>
         </div>
@@ -81,10 +83,10 @@ export function DashboardLayout() {
               <span className="sidebar-note__icon" aria-hidden="true">
                 <ShieldCheck size={16} />
               </span>
-              <p className="sidebar-note__title">{counters.pendingReview ? `${counters.pendingReview} ads waiting` : 'Queue is clear'}</p>
-              <p className="sidebar-note__text">Ads are checked before they go live.</p>
+              <p className="sidebar-note__title">{counters.pendingReview ? tn(counters.pendingReview, '{count} ad waiting', '{count} ads waiting') : t('Queue is clear')}</p>
+              <p className="sidebar-note__text">{t('Ads are checked before they go live.')}</p>
               <Link to="/admin/moderation" className="sidebar-note__link">
-                Open moderation
+                {t('Open moderation')}
               </Link>
             </div>
           ) : isSeller ? (
@@ -92,16 +94,16 @@ export function DashboardLayout() {
               <span className="sidebar-note__icon" aria-hidden="true">
                 <PlusCircle size={16} />
               </span>
-              <p className="sidebar-note__title">Sell something today</p>
-              <p className="sidebar-note__text">Posting an ad is free and takes a few minutes.</p>
+              <p className="sidebar-note__title">{t('Sell something today')}</p>
+              <p className="sidebar-note__text">{t('Posting an ad is free and takes a few minutes.')}</p>
               <Link to="/account/listings/new" className="sidebar-note__link">
-                Post an ad
+                {t('Post an ad')}
               </Link>
             </div>
           ) : null}
           <Link to="/" className="sidebar__link">
             <ArrowLeft size={18} aria-hidden="true" />
-            <span>Back to marketplace</span>
+            <span>{t('Back to marketplace')}</span>
           </Link>
         </div>
       </aside>
@@ -109,7 +111,7 @@ export function DashboardLayout() {
 
       <div className="dash__main">
         <header className="topbar">
-          <button type="button" className="icon-btn show-lg" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+          <button type="button" className="icon-btn show-lg" onClick={() => setSidebarOpen(true)} aria-label={t('Open menu')}>
             <Menu size={18} />
           </button>
           <form className="topbar__search" role="search" onSubmit={handleSearch}>
@@ -119,27 +121,32 @@ export function DashboardLayout() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={isAdmin ? 'Search ads or sellers' : 'Search ads'}
-              aria-label="Search"
+              placeholder={isAdmin ? t('Search ads or sellers') : t('Search ads')}
+              aria-label={t('Search')}
             />
             <kbd className="topbar__kbd hide-sm" aria-hidden="true">
               /
             </kbd>
           </form>
           <div className="topbar__actions">
+            <LanguageSwitch />
             {!isAdmin && (
-              <Link to="/account/messages" className="icon-btn hide-sm" aria-label={`Messages${counters.unreadMessages ? `, ${counters.unreadMessages} unread` : ''}`}>
+              <Link to="/account/messages" className="icon-btn hide-sm" aria-label={counters.unreadMessages ? t('Messages, {count} unread', { count: counters.unreadMessages }) : t('Messages')}>
                 <MessageSquare size={18} />
                 {counters.unreadMessages ? <span className="icon-btn__dot" /> : null}
               </Link>
             )}
-            <Link to={rolePath(user.role, 'notifications')} className="icon-btn" aria-label={`Notifications${counters.unreadNotifications ? `, ${counters.unreadNotifications} unread` : ''}`}>
+            <Link
+              to={rolePath(user.role, 'notifications')}
+              className="icon-btn"
+              aria-label={counters.unreadNotifications ? t('Notifications, {count} unread', { count: counters.unreadNotifications }) : t('Notifications')}
+            >
               <Bell size={18} />
               {counters.unreadNotifications ? <span className="icon-btn__dot" /> : null}
             </Link>
             {isSeller && (
               <ButtonLink to="/account/listings/new" variant="primary" size="sm" icon={<PlusCircle size={16} />} className="hide-md">
-                Post an ad
+                {t('Post an ad')}
               </ButtonLink>
             )}
             <span className="topbar__divider hide-sm" aria-hidden="true" />

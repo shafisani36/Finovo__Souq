@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { CheckCircle2, CircleDashed, Clock, EyeOff, FileEdit, TimerOff, Undo2, XCircle } from 'lucide-react';
 import type { ListingAvailability, ListingStatus, ReportStatus, UserStatus } from '../../types';
 import { LISTING_STATUS_LABELS } from '../../utils/format';
+import { t } from '../../i18n';
 
 export type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'primary';
 
@@ -29,7 +30,7 @@ export function ListingStatusBadge({ status, availability }: { status: ListingSt
   if (status === 'published' && availability && availability !== 'available') {
     return (
       <Badge tone="primary" icon={<CheckCircle2 size={12} />}>
-        {availability === 'sold' ? 'Sold' : 'Rented'}
+        {availability === 'sold' ? t('Sold') : t('Rented')}
       </Badge>
     );
   }
@@ -42,9 +43,10 @@ export function ListingStatusBadge({ status, availability }: { status: ListingSt
 }
 
 const USER_STATUS: Record<UserStatus, { tone: BadgeTone; label: string }> = {
-  pending: { tone: 'warning', label: 'Waiting for approval' },
-  active: { tone: 'success', label: 'Active' },
-  suspended: { tone: 'danger', label: 'Suspended' },
+  pending: { tone: 'warning', label: t('Waiting for approval') },
+  active: { tone: 'success', label: t('Active') },
+  suspended: { tone: 'danger', label: t('Suspended') },
+  deleted: { tone: 'neutral', label: t('Deleted') },
 };
 
 export function UserStatusBadge({ status }: { status: UserStatus }) {
@@ -52,10 +54,10 @@ export function UserStatusBadge({ status }: { status: UserStatus }) {
 }
 
 const REPORT_STATUS: Record<ReportStatus, { tone: BadgeTone; label: string }> = {
-  open: { tone: 'danger', label: 'Open' },
-  reviewing: { tone: 'warning', label: 'Reviewing' },
-  resolved: { tone: 'success', label: 'Resolved' },
-  dismissed: { tone: 'neutral', label: 'Dismissed' },
+  open: { tone: 'danger', label: t('Open') },
+  reviewing: { tone: 'warning', label: t('Reviewing') },
+  resolved: { tone: 'success', label: t('Resolved') },
+  dismissed: { tone: 'neutral', label: t('Dismissed') },
 };
 
 export function ReportStatusBadge({ status }: { status: ReportStatus }) {

@@ -1,5 +1,7 @@
 import Setting, { PAGE_SLUGS } from './setting.model.js'
 import { DEFAULT_SETTINGS } from './settings.defaults.js'
+import { ARABIC_PAGES } from './settings.pages.ar.js'
+import { paymentsAvailable } from '../../services/stripe.service.js'
 
 const CACHE_TTL_MS = 60_000
 let cached = null
@@ -7,8 +9,17 @@ let cached = null
 // Settings added in a later release get their default value once, without touching what admins already changed
 const addMissingDefaults = async (doc) => {
   const $set = {}
-  for (const slug of PAGE_SLUGS) if (!doc.pages?.[slug]) $set[`pages.${slug}`] = { ...DEFAULT_SETTINGS.pages[slug], updatedAt: new Date() }
+  for (const slug of PAGE_SLUGS) {
+    const page = doc.pages?.[slug]
+    if (!page) $set[`pages.${slug}`] = { ...DEFAULT_SETTINGS.pages[slug], titleAr: ARABIC_PAGES[slug].title, bodyAr: ARABIC_PAGES[slug].body, updatedAt: new Date() }
+    // Pages saved before Arabic existed get the Arabic text only if the English text is still ours
+    else if (page.bodyAr === undefined && page.body === DEFAULT_SETTINGS.pages[slug].body) {
+      $set[`pages.${slug}.titleAr`] = ARABIC_PAGES[slug].title
+      $set[`pages.${slug}.bodyAr`] = ARABIC_PAGES[slug].body
+    }
+  }
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS.listings)) if (doc.listings?.[key] === undefined) $set[`listings.${key}`] = value
+  if (!doc.promotions?.packages) $set.promotions = DEFAULT_SETTINGS.promotions
   if (!Object.keys($set).length) return doc
   return Setting.findOneAndUpdate({ key: 'site' }, { $set }, { returnDocument: 'after', lean: true })
 }
@@ -41,4 +52,10 @@ export const toPublicSettings = (s) => ({
   social: s.social,
   announcement: s.announcement.enabled && s.announcement.text ? { text: s.announcement.text, tone: s.announcement.tone, link: s.announcement.link || null } : null,
   listings: { maxPhotos: s.listings.maxPhotos, expiryDays: s.listings.expiryDays ?? 30 },
+  // Sellers only see paid promotion when it is switched on and Stripe is configured
+  promotions: {
+    enabled: Boolean(s.promotions?.enabled && s.promotions.packages?.length && paymentsAvailable()),
+    currency: 'SAR',
+    packages: s.promotions?.packages ?? [],
+  },
 })

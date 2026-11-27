@@ -20,6 +20,7 @@ const DashboardLayout = page(() => import('../layouts/DashboardLayout'), 'Dashbo
 const BrowsePage = page(() => import('../pages/public/BrowsePage'), 'BrowsePage');
 const ListingDetailPage = page(() => import('../pages/public/ListingDetailPage'), 'ListingDetailPage');
 const SellerProfilePage = page(() => import('../pages/public/SellerProfilePage'), 'SellerProfilePage');
+const StorePage = page(() => import('../pages/public/StorePage'), 'StorePage');
 const LegalPage = page(() => import('../pages/public/LegalPage'), 'LegalPage');
 const AboutPage = page(() => import('../pages/public/AboutPage'), 'AboutPage');
 const FaqPage = page(() => import('../pages/public/FaqPage'), 'FaqPage');
@@ -36,6 +37,8 @@ const HistoryPage = page(() => import('../pages/admin/HistoryPage'), 'HistoryPag
 const CategoriesPage = page(() => import('../pages/admin/CategoriesPage'), 'CategoriesPage');
 const SettingsPage = page(() => import('../pages/admin/SettingsPage'), 'SettingsPage');
 const PromotionsPage = page(() => import('../pages/admin/PromotionsPage'), 'PromotionsPage');
+const StoresPage = page(() => import('../pages/admin/StoresPage'), 'StoresPage');
+const MyStorePage = page(() => import('../pages/account/MyStorePage'), 'MyStorePage');
 const UserDashboardPage = page(() => import('../pages/account/UserDashboardPage'), 'UserDashboardPage');
 const MyListingsPage = page(() => import('../pages/account/MyListingsPage'), 'MyListingsPage');
 const PostAdPage = page(() => import('../pages/account/PostAdPage'), 'PostAdPage');
@@ -62,6 +65,7 @@ export function AppRouter() {
                     <Route path="search" element={<BrowsePage />} />
                     <Route path="listings/:id" element={<ListingDetailPage />} />
                     <Route path="sellers/:id" element={<SellerProfilePage />} />
+                    <Route path="stores/:slug" element={<StorePage />} />
                     <Route path="about" element={<AboutPage />} />
                     <Route path="faq" element={<FaqPage />} />
                     <Route path="contact" element={<ContactPage />} />
@@ -97,6 +101,7 @@ export function AppRouter() {
                     <Route path="settings" element={<SettingsPage />} />
                     <Route path="promotions" element={<PromotionsPage />} />
                     <Route path="users" element={<UsersPage />} />
+                    <Route path="stores" element={<StoresPage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
                     <Route path="profile" element={<ProfilePage />} />
                   </Route>
@@ -115,6 +120,7 @@ export function AppRouter() {
                     <Route path="listings" element={<MyListingsPage />} />
                     <Route path="listings/new" element={<PostAdPage />} />
                     <Route path="listings/:id/edit" element={<PostAdPage />} />
+                    <Route path="store" element={<MyStorePage />} />
                     <Route path="saved" element={<SavedPage />} />
                     <Route path="messages" element={<MessagesPage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
