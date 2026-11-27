@@ -155,7 +155,7 @@ router.post('/payments/:id/approve', asyncHandler(async (req, res) => {
 }))
 
 router.post('/payments/:id/reject', asyncHandler(async (req, res) => {
-  const reason = toText(req.body.reason).slice(0, 300)
+  const reason = toText(req.body?.reason).slice(0, 300)
   if (reason.length < 5) throw ApiError.validation({ reason: 'Tell the seller why, in a few words' })
   const payment = await rejectPromotion(req.params.id, req.user.id, reason)
   await logAction(req, { action: 'promotion_rejected', listing: payment.listing, reason, previousStatus: 'paid', newStatus: 'refunded' })
@@ -185,7 +185,7 @@ const STORE_DECISIONS = {
 router.post('/stores/:id/:decision', asyncHandler(async (req, res) => {
   const decision = STORE_DECISIONS[req.params.decision]
   if (!decision || !isValidObjectId(req.params.id)) throw ApiError.notFound('Not found')
-  const reason = toText(req.body.reason).slice(0, 300)
+  const reason = toText(req.body?.reason).slice(0, 300)
   if (decision.needsReason && reason.length < 5) throw ApiError.validation({ reason: 'Tell the seller why, in a few words' })
 
   const store = await Store.findById(req.params.id)
@@ -282,7 +282,7 @@ router.post('/users/:id/approve', asyncHandler(async (req, res) => {
 
 router.patch('/users/:id/status', asyncHandler(async (req, res) => {
   const { status } = req.body
-  const reason = toText(req.body.reason).slice(0, 500)
+  const reason = toText(req.body?.reason).slice(0, 500)
   if (!['active', 'suspended'].includes(status)) throw ApiError.validation({ status: 'Choose a valid status' })
   if (reason.length < 5) throw ApiError.validation({ reason: 'Add a short reason' })
 
@@ -306,7 +306,7 @@ router.patch('/users/:id/status', asyncHandler(async (req, res) => {
 
 // Permanent: personal details, ads, photos and chat messages are erased
 router.post('/users/:id/delete', asyncHandler(async (req, res) => {
-  const reason = toText(req.body.reason).slice(0, 500)
+  const reason = toText(req.body?.reason).slice(0, 500)
   if (reason.length < 5) throw ApiError.validation({ reason: 'Add a short reason' })
   const user = await User.findById(req.params.id)
   if (!user) throw ApiError.notFound('User not found')

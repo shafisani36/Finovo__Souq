@@ -308,6 +308,10 @@ describe('API', { skip: !enabled && 'Set TEST_MONGODB_URI to run the integration
     assert.equal(queue.body.data.items[0].amount, 49)
 
     assert.equal((await request.post(`/api/v1/admin/payments/${payment.id}/approve`).set(as('seller'))).status, 403)
+    // The photo upload above sent the ad back for review, so it is not live yet
+    assert.equal((await request.post(`/api/v1/admin/payments/${payment.id}/approve`).set(as('admin'))).status, 409, 'an ad that is not live is not featured')
+    assert.equal((await Payment.findById(payment._id).lean()).status, 'paid', 'the payment stays in the queue to approve or refund')
+    assert.equal((await request.post(`/api/v1/admin/listings/${listingId}/approve`).set(as('admin'))).status, 200)
     const approved = await request.post(`/api/v1/admin/payments/${payment.id}/approve`).set(as('admin'))
     assert.equal(approved.status, 200)
     assert.equal(approved.body.data.status, 'approved')
